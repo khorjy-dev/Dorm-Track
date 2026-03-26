@@ -1,0 +1,530 @@
+import React from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  CardMedia,
+  Chip,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  MenuItem,
+} from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
+import type { Severity, SubmittedIncident } from '../IncidentLoggerApp';
+import { severityChipColor } from '../utils/severityChipColor';
+
+type EditDraft = {
+  datetimeLocal: string;
+  location: string;
+  infractionType: string;
+  severity: Severity;
+  description: string;
+  studentsCsv: string;
+};
+
+export default function StaffReviewPage(props: {
+  incidents: SubmittedIncident[];
+  onDeleteIncident: (id: string) => void;
+  onUpdateIncident: (incident: SubmittedIncident) => void;
+  resolveStudent: (value: string) => string;
+}) {
+  const { incidents, onDeleteIncident, onUpdateIncident, resolveStudent } = props;
+
+  const [dateFrom, setDateFrom] = React.useState<string>('');
+  const [dateTo, setDateTo] = React.useState<string>('');
+  const [studentFilter, setStudentFilter] = React.useState<string | null>(null);
+  const [severityFilter, setSeverityFilter] = React.useState<Severity | ''>('');
+  const [editingIncidentId, setEditingIncidentId] = React.useState<string | null>(null);
+  const [draft, setDraft] = React.useState<EditDraft | null>(null);
+  const [detailsIncidentId, setDetailsIncidentId] = React.useState<string | null>(null);
+
+  const allStudentIds = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const inc of incidents) {
+      for (const s of inc.students) set.add(resolveStudent(s));
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [incidents, resolveStudent]);
+
+  const filteredIncidents = React.useMemo(() => {
+    const from = dateFrom?.trim();
+    const to = dateTo?.trim();
+
+    return incidents.filter((inc) => {
+      const datePart = (inc.datetimeLocal || '').slice(0, 10); // YYYY-MM-DD
+      const displayStudents = inc.students.map(resolveStudent);
+
+      if (from && datePart < from) return false;
+      if (to && datePart > to) return false;
+
+      if (studentFilter && !displayStudents.includes(studentFilter)) return false;
+      if (severityFilter && inc.severity !== severityFilter) return false;
+      return true;
+    });
+  }, [incidents, dateFrom, dateTo, studentFilter, severityFilter, resolveStudent]);
+
+  const editingIncident = React.useMemo(
+    () => incidents.find((x) => x.id === editingIncidentId) ?? null,
+    [editingIncidentId, incidents],
+  );
+
+  const detailsIncident = React.useMemo(
+    () => incidents.find((x) => x.id === detailsIncidentId) ?? null,
+    [detailsIncidentId, incidents],
+  );
+
+  const openEdit = (incident: SubmittedIncident) => {
+    setEditingIncidentId(incident.id);
+    setDraft({
+      datetimeLocal: incident.datetimeLocal,
+      location: incident.location,
+      infractionType: incident.infractionType,
+      severity: incident.severity,
+      description: incident.description,
+      studentsCsv: incident.students.join(', '),
+    });
+  };
+
+  const closeEdit = () => {
+    setEditingIncidentId(null);
+    setDraft(null);
+  };
+
+  const closeDetails = () => {
+    setDetailsIncidentId(null);
+  };
+
+  const saveEdit = () => {
+    if (!editingIncident || !draft) return;
+    const students = draft.studentsCsv
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const updated: SubmittedIncident = {
+      ...editingIncident,
+      datetimeLocal: draft.datetimeLocal,
+      location: draft.location,
+      infractionType: draft.infractionType,
+      severity: draft.severity,
+      description: draft.description,
+      students: students.map(resolveStudent),
+    };
+
+    onUpdateIncident(updated);
+    closeEdit();
+  };
+
+  return (
+    <Container maxWidth="md" sx={{ py: 2 }}>
+      <Paper elevation={1} sx={{ p: 2.5 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Submitted incidents
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Prototype view. In the real app, this list would come from the backend.
+        </Typography>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+            mb: 2,
+          }}
+        >
+          <TextField
+            label="Date from"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          <TextField
+            label="Date to"
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          <Box sx={{ gridColumn: { xs: '1 / -1', sm: '1 / -1' } }}>
+            <Autocomplete
+              options={allStudentIds}
+              value={studentFilter}
+              onChange={(_, newValue) => setStudentFilter(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Student"
+                  placeholder="Filter by student (optional)"
+                />
+              )}
+              clearOnEscape
+              sx={{ maxWidth: 520 }}
+            />
+          </Box>
+
+          <Box sx={{ maxWidth: 280 }}>
+            <TextField
+              select
+              label="Severity"
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value as Severity | '')}
+              fullWidth
+            >
+              <MenuItem value="">All severities</MenuItem>
+              <MenuItem value="low">Low</MenuItem>
+              <MenuItem value="medium">Medium</MenuItem>
+              <MenuItem value="high">High</MenuItem>
+            </TextField>
+          </Box>
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+                setStudentFilter(null);
+                setSeverityFilter('');
+              }}
+              disabled={!dateFrom && !dateTo && !studentFilter && !severityFilter}
+            >
+              Clear filters
+            </Button>
+          </Box>
+        </Box>
+
+        {incidents.length === 0 ? (
+          <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.paper' }}>
+            <Typography variant="body2" color="text.secondary">
+              No incidents submitted yet.
+            </Typography>
+          </Card>
+        ) : (
+          <>
+            {filteredIncidents.length === 0 ? (
+              <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.paper' }}>
+                <Typography variant="body2" color="text.secondary">
+                  No incidents match your filters.
+                </Typography>
+              </Card>
+            ) : (
+              <List disablePadding>
+                {filteredIncidents
+                  .slice()
+                  .sort((a, b) => (a.submittedAt > b.submittedAt ? -1 : 1))
+                  .map((inc) => (
+                    <React.Fragment key={inc.id}>
+                      <ListItem
+                        alignItems="flex-start"
+                        onClick={() => setDetailsIncidentId(inc.id)}
+                        sx={{ py: 2, cursor: 'pointer' }}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                              <Typography variant="subtitle2">{inc.infractionType}</Typography>
+                              <Chip
+                                size="small"
+                                label={inc.severity.toUpperCase()}
+                                color={severityChipColor(inc.severity)}
+                              />
+                            </Box>
+                          }
+                          secondary={
+                            <Box sx={{ display: 'grid', gap: 0.25, mt: 0.5 }}>
+                              <Typography variant="body2">
+                                <b>When:</b> {inc.datetimeLocal}
+                              </Typography>
+                              <Typography variant="body2">
+                                <b>Where:</b> {inc.location}
+                              </Typography>
+                              <Typography variant="body2">
+                                <b>Students:</b> {inc.students.map(resolveStudent).join(', ')}
+                              </Typography>
+                              <Typography variant="body2">
+                                <b>Actions:</b> {inc.actionsTaken.join(', ') || 'None'}
+                              </Typography>
+                              <Typography variant="body2">
+                                <b>Email status:</b>{' '}
+                                {inc.sendEmailNotifications
+                                  ? inc.emailStatus === 'queued'
+                                    ? `Queued (${inc.emailQueuedCount})`
+                                    : inc.emailStatus === 'queue_failed'
+                                      ? `Failed${inc.emailError ? ` - ${inc.emailError}` : ''}`
+                                      : 'Pending'
+                                  : 'Disabled'}
+                              </Typography>
+                              {inc.media.length > 0 && (
+                                <Typography variant="body2">
+                                  <b>Media:</b> {inc.media.length} attachment(s)
+                                </Typography>
+                              )}
+                            </Box>
+                          }
+                        />
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, ml: 1 }}>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(inc);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteIncident(inc.id);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </Box>
+                      </ListItem>
+                      <Divider />
+                    </React.Fragment>
+                  ))}
+              </List>
+            )}
+          </>
+        )}
+      </Paper>
+
+      <Dialog open={Boolean(editingIncident && draft)} onClose={closeEdit} fullWidth maxWidth="sm">
+        <DialogTitle>Edit incident</DialogTitle>
+        <DialogContent>
+          {draft && (
+            <Box sx={{ display: 'grid', gap: 1.5, mt: 0.5 }}>
+              <TextField
+                label="When"
+                type="datetime-local"
+                value={draft.datetimeLocal}
+                onChange={(e) => setDraft((prev) => (prev ? { ...prev, datetimeLocal: e.target.value } : prev))}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+              <TextField
+                label="Location"
+                value={draft.location}
+                onChange={(e) => setDraft((prev) => (prev ? { ...prev, location: e.target.value } : prev))}
+                fullWidth
+              />
+              <TextField
+                label="Infraction type"
+                value={draft.infractionType}
+                onChange={(e) => setDraft((prev) => (prev ? { ...prev, infractionType: e.target.value } : prev))}
+                fullWidth
+              />
+              <TextField
+                select
+                label="Severity"
+                value={draft.severity}
+                onChange={(e) =>
+                  setDraft((prev) => (prev ? { ...prev, severity: e.target.value as Severity } : prev))
+                }
+                fullWidth
+              >
+                <MenuItem value="low">Low</MenuItem>
+                <MenuItem value="medium">Medium</MenuItem>
+                <MenuItem value="high">High</MenuItem>
+              </TextField>
+              <TextField
+                label="Students (comma-separated)"
+                value={draft.studentsCsv}
+                onChange={(e) => setDraft((prev) => (prev ? { ...prev, studentsCsv: e.target.value } : prev))}
+                fullWidth
+              />
+              <TextField
+                label="Description"
+                value={draft.description}
+                onChange={(e) => setDraft((prev) => (prev ? { ...prev, description: e.target.value } : prev))}
+                multiline
+                minRows={3}
+                fullWidth
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeEdit}>Cancel</Button>
+          <Button onClick={saveEdit} variant="contained">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(detailsIncident)} onClose={closeDetails} fullWidth maxWidth="md">
+        <DialogTitle>Incident details</DialogTitle>
+        <DialogContent dividers>
+          {!detailsIncident ? null : (
+            <Box sx={{ display: 'grid', gap: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                <Typography variant="h6">{detailsIncident.infractionType}</Typography>
+                <Chip
+                  size="small"
+                  label={detailsIncident.severity.toUpperCase()}
+                  color={severityChipColor(detailsIncident.severity)}
+                />
+              </Box>
+
+              <Divider />
+
+              <Typography variant="body2">
+                <b>ID:</b> {detailsIncident.id}
+              </Typography>
+              <Typography variant="body2">
+                <b>Submitted at:</b> {detailsIncident.submittedAt}
+              </Typography>
+              <Typography variant="body2">
+                <b>When:</b> {detailsIncident.datetimeLocal}
+              </Typography>
+              <Typography variant="body2">
+                <b>Where:</b> {detailsIncident.location}
+              </Typography>
+              <Typography variant="body2">
+                <b>Students:</b> {detailsIncident.students.map(resolveStudent).join(', ')}
+              </Typography>
+
+              <Typography variant="body2">
+                <b>Actions:</b> {detailsIncident.actionsTaken.join(', ') || 'None'}
+              </Typography>
+              {detailsIncident.actionsOther?.trim() ? (
+                <Typography variant="body2">
+                  <b>Other actions:</b> {detailsIncident.actionsOther}
+                </Typography>
+              ) : null}
+
+              <Typography variant="body2">
+                <b>Description:</b>
+              </Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                {detailsIncident.description?.trim() ? detailsIncident.description : 'No description added'}
+              </Typography>
+
+              <Divider />
+
+              <Typography variant="body2">
+                <b>Email notifications:</b> {detailsIncident.sendEmailNotifications ? 'Enabled' : 'Disabled'}
+              </Typography>
+              {detailsIncident.sendEmailNotifications ? (
+                <Typography variant="body2">
+                  <b>Email status:</b>{' '}
+                  {detailsIncident.emailStatus === 'queued'
+                    ? `Queued (${detailsIncident.emailQueuedCount})`
+                    : detailsIncident.emailStatus === 'queue_failed'
+                      ? `Failed${detailsIncident.emailError ? ` - ${detailsIncident.emailError}` : ''}`
+                      : detailsIncident.emailStatus === 'not_requested'
+                        ? 'Not requested'
+                        : 'Pending'}
+                </Typography>
+              ) : null}
+
+              {detailsIncident.sendEmailNotifications ? (
+                <>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <b>Student email template:</b>
+                  </Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {detailsIncident.studentEmailTemplate}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <b>Parent email template:</b>
+                  </Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {detailsIncident.parentEmailTemplate}
+                  </Typography>
+                </>
+              ) : null}
+
+              <Divider />
+
+              <Box sx={{ display: 'grid', gap: 1 }}>
+                <Typography variant="body2">
+                  <b>Media:</b> {detailsIncident.media.length ? `${detailsIncident.media.length} attachment(s)` : 'None'}
+                </Typography>
+
+                {detailsIncident.media.length ? (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+                      gap: 1.5,
+                    }}
+                  >
+                    {detailsIncident.media.map((m, idx) => {
+                      const mm = m as unknown as { kind?: string; fileName?: string; dataUrl?: string };
+                      const src = mm.dataUrl;
+                      const fileName = mm.fileName ?? `attachment_${idx + 1}`;
+                      const kind = mm.kind === 'video' ? 'video' : 'image';
+
+                      return (
+                        <Card key={`${m.id}-${idx}`} variant="outlined">
+                          {src ? (
+                            kind === 'image' ? (
+                              <CardMedia
+                                component="img"
+                                image={src}
+                                alt={fileName}
+                                sx={{ width: '100%', height: 200, objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <Box sx={{ bgcolor: '#000', width: '100%', height: 200 }}>
+                                <video
+                                  src={src}
+                                  controls
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                />
+                              </Box>
+                            )
+                          ) : (
+                            <Box sx={{ p: 2 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Media preview not stored
+                              </Typography>
+                            </Box>
+                          )}
+                          <CardContent sx={{ p: 1 }}>
+                            <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {fileName}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </Box>
+                ) : null}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDetails}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
+}
+
