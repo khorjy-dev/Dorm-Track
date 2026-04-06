@@ -21,14 +21,21 @@ const AuthContext = React.createContext<AuthContextValue | null>(null);
 const ROLE_VALUES: Role[] = ['ra', 'staff', 'admin'];
 const authRedirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin;
 
+function normalizeDefaultRole(raw: unknown): Role {
+  if (typeof raw !== 'string') return 'staff';
+  const value = raw.trim().toLowerCase();
+  return ROLE_VALUES.includes(value as Role) ? (value as Role) : 'staff';
+}
+
 function normalizeRole(raw: unknown, fallback: Role): Role {
   if (typeof raw !== 'string') return fallback;
-  if (ROLE_VALUES.includes(raw as Role)) return raw as Role;
+  const value = raw.trim().toLowerCase();
+  if (ROLE_VALUES.includes(value as Role)) return value as Role;
   return fallback;
 }
 
 async function fetchRoleForUser(uid: string): Promise<Role> {
-  const defaultRole = (import.meta.env.VITE_DEFAULT_ROLE as Role) || 'staff';
+  const defaultRole = normalizeDefaultRole(import.meta.env.VITE_DEFAULT_ROLE);
 
   // Supabase table: `public.user_roles` with `{ user_id: auth.uid(), role: 'ra' | 'staff' | 'admin' }`
   const { data, error } = await supabase
@@ -69,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Failed to load role from Supabase (auth change):', err);
-        const fallbackRole = (import.meta.env.VITE_DEFAULT_ROLE as Role) || 'staff';
+        const fallbackRole = normalizeDefaultRole(import.meta.env.VITE_DEFAULT_ROLE);
         if (cancelled) return;
         setUser({ email: supaUser.email, role: fallbackRole });
       } finally {
