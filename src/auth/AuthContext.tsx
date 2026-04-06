@@ -19,6 +19,7 @@ type AuthContextValue = {
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 const ROLE_VALUES: Role[] = ['ra', 'staff', 'admin'];
+const authRedirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin;
 
 function normalizeRole(raw: unknown, fallback: Role): Role {
   if (typeof raw !== 'string') return fallback;
@@ -88,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ensure Google provider + redirect URLs are configured in Supabase dashboard.
       await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: authRedirectUrl },
       });
     } catch (err) {
       // eslint-disable-next-line no-console
