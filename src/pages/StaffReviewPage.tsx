@@ -23,6 +23,7 @@ import {
 import Autocomplete from '@mui/material/Autocomplete';
 import type { Severity, SubmittedIncident } from '../IncidentLoggerApp';
 import { severityChipColor } from '../utils/severityChipColor';
+import { fetchIncidentMedia } from '../data/incidentStore';
 
 type EditDraft = {
   datetimeLocal: string;
@@ -48,6 +49,9 @@ export default function StaffReviewPage(props: {
   const [editingIncidentId, setEditingIncidentId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<EditDraft | null>(null);
   const [detailsIncidentId, setDetailsIncidentId] = React.useState<string | null>(null);
+  const [deleteConfirmIncidentId, setDeleteConfirmIncidentId] = React.useState<string | null>(null);
+  const [detailsMediaById, setDetailsMediaById] = React.useState<Record<string, SubmittedIncident['media']>>({});
+  const [detailsMediaLoading, setDetailsMediaLoading] = React.useState(false);
 
   const allStudentIds = React.useMemo(() => {
     const set = new Set<string>();
@@ -84,6 +88,21 @@ export default function StaffReviewPage(props: {
     [detailsIncidentId, incidents],
   );
 
+  React.useEffect(() => {
+    if (!detailsIncidentId) return;
+    if (detailsMediaById[detailsIncidentId]) return;
+
+    setDetailsMediaLoading(true);
+    void fetchIncidentMedia(detailsIncidentId)
+      .then((media) => {
+        setDetailsMediaById((prev) => ({ ...prev, [detailsIncidentId]: media }));
+      })
+      .catch(() => {
+        setDetailsMediaById((prev) => ({ ...prev, [detailsIncidentId]: [] }));
+      })
+      .finally(() => setDetailsMediaLoading(false));
+  }, [detailsIncidentId, detailsMediaById]);
+
   const openEdit = (incident: SubmittedIncident) => {
     setEditingIncidentId(incident.id);
     setDraft({
@@ -103,6 +122,17 @@ export default function StaffReviewPage(props: {
 
   const closeDetails = () => {
     setDetailsIncidentId(null);
+    setDetailsMediaLoading(false);
+  };
+
+  const closeDeleteConfirm = () => {
+    setDeleteConfirmIncidentId(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteConfirmIncidentId) return;
+    onDeleteIncident(deleteConfirmIncidentId);
+    setDeleteConfirmIncidentId(null);
   };
 
   const saveEdit = () => {
@@ -131,9 +161,6 @@ export default function StaffReviewPage(props: {
       <Paper elevation={1} sx={{ p: 2.5 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>
           Submitted incidents
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Prototype view. In the real app, this list would come from the backend.
         </Typography>
 
         <Box
@@ -252,6 +279,11 @@ export default function StaffReviewPage(props: {
                               <Typography variant="body2">
                                 <b>When:</b> {inc.datetimeLocal}
                               </Typography>
+                              {inc.recordedByEmail.trim() ? (
+                                <Typography variant="body2">
+                                  <b>Recorded by:</b> {inc.recordedByEmail}
+                                </Typography>
+                              ) : null}
                               <Typography variant="body2">
                                 <b>Where:</b> {inc.location}
                               </Typography>
@@ -264,11 +296,13 @@ export default function StaffReviewPage(props: {
                               <Typography variant="body2">
                                 <b>Email status:</b>{' '}
                                 {inc.sendEmailNotifications
-                                  ? inc.emailStatus === 'queued'
-                                    ? `Queued (${inc.emailQueuedCount})`
-                                    : inc.emailStatus === 'queue_failed'
-                                      ? `Failed${inc.emailError ? ` - ${inc.emailError}` : ''}`
-                                      : 'Pending'
+                                  ? inc.emailStatus === 'sent'
+                                    ? `Sent (${inc.emailQueuedCount})`
+                                    : inc.emailStatus === 'queued'
+                                      ? `Queued (${inc.emailQueuedCount})`
+                                      : inc.emailStatus === 'queue_failed'
+                                        ? `Failed${inc.emailError ? ` - ${inc.emailError}` : ''}`
+                                        : 'Pending'
                                   : 'Disabled'}
                               </Typography>
                               {inc.media.length > 0 && (
@@ -296,7 +330,7 @@ export default function StaffReviewPage(props: {
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onDeleteIncident(inc.id);
+                              setDeleteConfirmIncidentId(inc.id);
                             }}
                           >
                             Delete
@@ -380,6 +414,12 @@ export default function StaffReviewPage(props: {
         <DialogContent dividers>
           {!detailsIncident ? null : (
             <Box sx={{ display: 'grid', gap: 1.5 }}>
+              {/** Media is loaded lazily for faster review list loading. */}
+              {(() => {
+                const detailsMedia = detailsIncidentId ? detailsMediaById[detailsIncidentId] : undefined;
+                const media = detailsMedia ?? detailsIncident.media ?? [];
+                return (
+                  <>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
                 <Typography variant="h6">{detailsIncident.infractionType}</Typography>
                 <Chip
@@ -393,6 +433,9 @@ export default function StaffReviewPage(props: {
 
               <Typography variant="body2">
                 <b>ID:</b> {detailsIncident.id}
+              </Typography>
+              <Typography variant="body2">
+                <b>Submitted by:</b> {detailsIncident.recordedByEmail.trim() || 'Unknown'}
               </Typography>
               <Typography variant="body2">
                 <b>Submitted at:</b> {detailsIncident.submittedAt}
@@ -431,13 +474,15 @@ export default function StaffReviewPage(props: {
               {detailsIncident.sendEmailNotifications ? (
                 <Typography variant="body2">
                   <b>Email status:</b>{' '}
-                  {detailsIncident.emailStatus === 'queued'
-                    ? `Queued (${detailsIncident.emailQueuedCount})`
-                    : detailsIncident.emailStatus === 'queue_failed'
-                      ? `Failed${detailsIncident.emailError ? ` - ${detailsIncident.emailError}` : ''}`
-                      : detailsIncident.emailStatus === 'not_requested'
-                        ? 'Not requested'
-                        : 'Pending'}
+                  {detailsIncident.emailStatus === 'sent'
+                    ? `Sent (${detailsIncident.emailQueuedCount})`
+                    : detailsIncident.emailStatus === 'queued'
+                      ? `Queued (${detailsIncident.emailQueuedCount})`
+                      : detailsIncident.emailStatus === 'queue_failed'
+                        ? `Failed${detailsIncident.emailError ? ` - ${detailsIncident.emailError}` : ''}`
+                        : detailsIncident.emailStatus === 'not_requested'
+                          ? 'Not requested'
+                          : 'Pending'}
                 </Typography>
               ) : null}
 
@@ -463,10 +508,15 @@ export default function StaffReviewPage(props: {
 
               <Box sx={{ display: 'grid', gap: 1 }}>
                 <Typography variant="body2">
-                  <b>Media:</b> {detailsIncident.media.length ? `${detailsIncident.media.length} attachment(s)` : 'None'}
+                  <b>Media:</b>{' '}
+                  {detailsMediaLoading
+                    ? 'Loading...'
+                    : media.length
+                      ? `${media.length} attachment(s)`
+                      : 'None'}
                 </Typography>
 
-                {detailsIncident.media.length ? (
+                {media.length ? (
                   <Box
                     sx={{
                       display: 'grid',
@@ -474,7 +524,7 @@ export default function StaffReviewPage(props: {
                       gap: 1.5,
                     }}
                   >
-                    {detailsIncident.media.map((m, idx) => {
+                    {media.map((m, idx) => {
                       const mm = m as unknown as { kind?: string; fileName?: string; dataUrl?: string };
                       const src = mm.dataUrl;
                       const fileName = mm.fileName ?? `attachment_${idx + 1}`;
@@ -517,11 +567,27 @@ export default function StaffReviewPage(props: {
                   </Box>
                 ) : null}
               </Box>
+                  </>
+                );
+              })()}
             </Box>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={closeDetails}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteConfirmIncidentId)} onClose={closeDeleteConfirm} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete record?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">Do you want to delete record?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteConfirm}>No</Button>
+          <Button color="error" variant="contained" onClick={confirmDelete}>
+            Yes
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

@@ -1,6 +1,6 @@
 import type { SubmittedIncident } from '../IncidentLoggerApp';
 import type { StudentRecord } from '../types/student';
-import { supabase } from '../lib/supabase';
+import { supabase, withAuthTokenLockRetry } from '../lib/supabase';
 
 type Recipient = {
   email: string;
@@ -76,7 +76,7 @@ export async function queueInfractionEmails(incident: SubmittedIncident, student
     },
   }));
 
-  const { error } = await supabase.from('mail').insert(payload);
+  const { error } = await withAuthTokenLockRetry(() => supabase.from('mail').insert(payload));
   if (error) throw error;
 
   return recipients.length;

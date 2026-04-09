@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { hasPermission } from './permissions';
 import type { Permission, Role } from './permissions';
@@ -10,22 +11,26 @@ export type AuthUser = {
 
 type AuthContextValue = {
   user: AuthUser | null;
+  /**
+   * Shown on the login screen after we reject a Google session because the account email is not in
+   * `staff_email_allowlist`. Session is cleared — this is only a message for the user.
+   */
+  notAuthorizedMessage: string | null;
+  clearNotAuthorizedMessage: () => void;
+  /** Role lookup failed (network/RLS); user is not admitted until resolved. */
+  authError: string | null;
+  clearAuthError: () => void;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  refreshAuth: () => Promise<void>;
   has: (permission: Permission) => boolean;
   loading: boolean;
 };
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
-const ROLE_VALUES: Role[] = ['ra', 'staff', 'admin'];
+const ROLE_VALUES: Role[] = ['staff', 'admin'];
 const authRedirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin;
-
-function normalizeDefaultRole(raw: unknown): Role {
-  if (typeof raw !== 'string') return 'staff';
-  const value = raw.trim().toLowerCase();
-  return ROLE_VALUES.includes(value as Role) ? (value as Role) : 'staff';
-}
 
 function normalizeRole(raw: unknown, fallback: Role): Role {
   if (typeof raw !== 'string') return fallback;
@@ -34,66 +39,120 @@ function normalizeRole(raw: unknown, fallback: Role): Role {
   return fallback;
 }
 
-async function fetchRoleForUser(uid: string): Promise<Role> {
-  const defaultRole = normalizeDefaultRole(import.meta.env.VITE_DEFAULT_ROLE);
-
-  // Supabase table: `public.user_roles` with `{ user_id: auth.uid(), role: 'ra' | 'staff' | 'admin' }`
-  const { data, error } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', uid)
-    .maybeSingle();
+/**
+ * Returns null if the signed-in email is not in `staff_email_allowlist` (not allowlisted).
+ */
+async function fetchRoleForEmail(email: string): Promise<Role | null> {
+  const emailLower = email.trim().toLowerCase();
+  const { data, error } = await supabase.from('staff_email_allowlist').select('role').eq('email', emailLower).maybeSingle();
 
   if (error) throw error;
-  return normalizeRole(data?.role, defaultRole);
+  if (!data) return null;
+  return normalizeRole(data.role, 'staff');
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error('timeout')), ms);
+    promise
+      .then((value) => resolve(value))
+      .catch((err) => reject(err))
+      .finally(() => window.clearTimeout(timer));
+  });
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [notAuthorizedMessage, setNotAuthorizedMessage] = React.useState<string | null>(null);
+  const [authError, setAuthError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    let cancelled = false;
+  const clearNotAuthorizedMessage = React.useCallback(() => setNotAuthorizedMessage(null), []);
+
+  const applySession = React.useCallback(async (session: Session | null, cancelled: () => boolean) => {
+    setAuthError(null);
+    const supaUser = session?.user;
+    if (!supaUser?.id || !supaUser?.email) {
+      if (cancelled()) return;
+      setUser(null);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
-    // Rely solely on auth state changes to avoid parallel session/token reads.
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (cancelled) return;
+    try {
+      const role = await fetchRoleForEmail(supaUser.email);
+      if (cancelled()) return;
 
-      const supaUser = session?.user;
-      if (!supaUser?.id || !supaUser?.email) {
+      if (role === null) {
+        setNotAuthorizedMessage(
+          `This email is not authorized to use DormTrack: ${supaUser.email}. Your school email must be added to the staff allowlist in the database. Ask an administrator.`,
+        );
         setUser(null);
-        setLoading(false);
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // Session should still be cleared for UX; ignore sign-out errors.
+        }
         return;
       }
 
-      try {
-        const role = await fetchRoleForUser(supaUser.id);
+      setNotAuthorizedMessage(null);
+      setUser({ email: supaUser.email, role });
+    } catch (err) {
+      if (cancelled()) return;
+      setUser(null);
+      const message = err instanceof Error ? err.message : 'Failed to verify access.';
+      setAuthError(message);
+      // eslint-disable-next-line no-console
+      console.error('Failed to load role from Supabase:', err);
+    } finally {
+      if (!cancelled()) setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const isCancelled = () => cancelled;
+
+    void withTimeout(supabase.auth.getSession(), 8000)
+      .then(({ data }) => applySession(data.session, isCancelled))
+      .catch(() => {
         if (cancelled) return;
-        setUser({ email: supaUser.email, role });
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to load role from Supabase (auth change):', err);
-        const fallbackRole = normalizeDefaultRole(import.meta.env.VITE_DEFAULT_ROLE);
-        if (cancelled) return;
-        setUser({ email: supaUser.email, role: fallbackRole });
-      } finally {
+        setUser(null);
+        setAuthError('Could not reach sign-in service. Please refresh the page.');
         setLoading(false);
-      }
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      void applySession(session, isCancelled);
     });
 
     return () => {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [applySession]);
+
+  const refreshAuth = React.useCallback(async () => {
+    setAuthError(null);
+    setLoading(true);
+    try {
+      const { data } = await withTimeout(supabase.auth.getSession(), 8000);
+      await applySession(data.session, () => false);
+    } catch {
+      setLoading(false);
+      setAuthError('Could not verify your session. Try again in a moment.');
+    }
+  }, [applySession]);
+
+  const clearAuthError = React.useCallback(() => setAuthError(null), []);
 
   const loginWithGoogle = React.useCallback(async () => {
+    setNotAuthorizedMessage(null);
     try {
-      // Supabase OAuth uses redirect flow.
-      // Ensure Google provider + redirect URLs are configured in Supabase dashboard.
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: authRedirectUrl },
@@ -108,18 +167,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = React.useCallback(async () => {
+    setAuthError(null);
+    setNotAuthorizedMessage(null);
     await supabase.auth.signOut();
   }, []);
 
   const value = React.useMemo<AuthContextValue>(() => {
     return {
       user,
+      notAuthorizedMessage,
+      clearNotAuthorizedMessage,
+      authError,
+      clearAuthError,
       loginWithGoogle,
       logout,
+      refreshAuth,
       has: (permission: Permission) => (user ? hasPermission(user.role, permission) : false),
       loading,
     };
-  }, [loading, loginWithGoogle, logout, user]);
+  }, [
+    authError,
+    clearAuthError,
+    clearNotAuthorizedMessage,
+    loading,
+    loginWithGoogle,
+    logout,
+    notAuthorizedMessage,
+    refreshAuth,
+    user,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -129,4 +205,3 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
   return ctx;
 }
-

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, withAuthTokenLockRetry } from '../lib/supabase';
 import { DEFAULT_INFRACTION_TYPES } from './infractionTypes';
 
 type Row = { id: string; name: string; position: number };
@@ -6,10 +6,12 @@ type Row = { id: string; name: string; position: number };
 export function subscribeInfractionTypes(onData: (types: string[]) => void, onError?: (err: unknown) => void) {
   let alive = true;
   const fetchOnce = async () => {
-    const { data, error } = await supabase
-      .from('infraction_types')
-      .select('id,name,position')
-      .order('position', { ascending: true });
+    const { data, error } = await withAuthTokenLockRetry(() =>
+      supabase
+        .from('infraction_types')
+        .select('id,name,position')
+        .order('position', { ascending: true }),
+    );
     if (!alive) return;
     if (error) {
       if (onError) onError(error);

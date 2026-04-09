@@ -24,12 +24,19 @@ create table if not exists public.infraction_types (
   created_at timestamptz not null default now()
 );
 
--- Maps a Supabase Auth user to an application role (ra/staff/admin).
--- This replaces the previous Firestore-based `users/{uid}` role document.
+-- Legacy: user_id -> role (optional; app uses staff_email_allowlist).
 create table if not exists public.user_roles (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  role text not null check (role in ('ra','staff','admin')) default 'staff',
+  role text not null check (role in ('staff','admin')) default 'staff',
   created_at timestamptz not null default now()
+);
+
+-- Who may use the app: one row per allowed school email (lowercase). See bootstrap-staff.sql.
+create table if not exists public.staff_email_allowlist (
+  email text primary key,
+  role text not null check (role in ('staff','admin')) default 'staff',
+  created_at timestamptz not null default now(),
+  constraint staff_email_allowlist_email_lower check (email = lower(email))
 );
 
 create table if not exists public.incidents (
@@ -48,9 +55,10 @@ create table if not exists public.incidents (
   send_email_notifications boolean not null default true,
   student_email_template text not null default '',
   parent_email_template text not null default '',
-  email_status text not null default 'not_requested' check (email_status in ('not_requested','queued','queue_failed')),
+  email_status text not null default 'not_requested' check (email_status in ('not_requested','queued','queue_failed','sent')),
   email_queued_count int not null default 0,
   email_error text not null default '',
+  recorded_by_email text,
   created_at timestamptz not null default now()
 );
 
@@ -60,53 +68,166 @@ create table if not exists public.mail (
   to_email text not null,
   message jsonb not null,
   metadata jsonb,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  sent_at timestamptz,
+  send_error text
 );
 
--- Basic permissive policies for prototyping (tighten before production).
+-- Used by Edge Function send-mail to know when all recipients for an incident were sent.
+create or replace function public.mail_send_stats_for_incident(incident_id text)
+returns table(total_count bigint, sent_count bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    count(*)::bigint,
+    count(*) filter (where sent_at is not null)::bigint
+  from public.mail
+  where coalesce(metadata->>'incidentId','') = incident_id;
+$$;
+
+revoke all on function public.mail_send_stats_for_incident(text) from public;
+grant execute on function public.mail_send_stats_for_incident(text) to service_role;
+grant execute on function public.mail_send_stats_for_incident(text) to postgres;
+
+create or replace function public.current_user_email()
+returns text
+language sql
+stable
+as $$
+  select lower(trim(coalesce(auth.jwt() ->> 'email', '')));
+$$;
+
+create or replace function public.current_user_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select a.role
+  from public.staff_email_allowlist a
+  where a.email = public.current_user_email()
+  limit 1;
+$$;
+
+revoke all on function public.current_user_role() from public;
+grant execute on function public.current_user_role() to authenticated;
+grant execute on function public.current_user_role() to service_role;
+grant execute on function public.current_user_role() to postgres;
+
+-- Row level security: JWT email must exist in staff_email_allowlist. Bootstrap: supabase/bootstrap-staff.sql
 alter table public.students enable row level security;
 alter table public.infraction_types enable row level security;
 alter table public.user_roles enable row level security;
+alter table public.staff_email_allowlist enable row level security;
 alter table public.incidents enable row level security;
 alter table public.mail enable row level security;
 
 do $$
 begin
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='students' and policyname='students_all_auth') then
-    create policy students_all_auth on public.students for all to authenticated using (true) with check (true);
+  drop policy if exists staff_email_allowlist_select_own on public.staff_email_allowlist;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='staff_email_allowlist' and policyname='staff_email_allowlist_select_admin_or_own') then
+    create policy staff_email_allowlist_select_admin_or_own on public.staff_email_allowlist
+      for select to authenticated
+      using (
+        public.current_user_role() = 'admin'
+        or email = public.current_user_email()
+      );
   end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='infraction_types' and policyname='infraction_types_all_auth') then
-    create policy infraction_types_all_auth on public.infraction_types for all to authenticated using (true) with check (true);
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='staff_email_allowlist' and policyname='staff_email_allowlist_insert_admin') then
+    create policy staff_email_allowlist_insert_admin on public.staff_email_allowlist
+      for insert to authenticated
+      with check (public.current_user_role() = 'admin');
   end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incidents' and policyname='incidents_all_auth') then
-    create policy incidents_all_auth on public.incidents for all to authenticated using (true) with check (true);
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='staff_email_allowlist' and policyname='staff_email_allowlist_update_admin') then
+    create policy staff_email_allowlist_update_admin on public.staff_email_allowlist
+      for update to authenticated
+      using (public.current_user_role() = 'admin')
+      with check (public.current_user_role() = 'admin');
   end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='mail' and policyname='mail_all_auth') then
-    create policy mail_all_auth on public.mail for all to authenticated using (true) with check (true);
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='staff_email_allowlist' and policyname='staff_email_allowlist_delete_admin') then
+    create policy staff_email_allowlist_delete_admin on public.staff_email_allowlist
+      for delete to authenticated
+      using (public.current_user_role() = 'admin');
+  end if;
+
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='students' and policyname='students_staff_email') then
+    create policy students_staff_email on public.students
+      for all to authenticated
+      using (exists (
+        select 1 from public.staff_email_allowlist a
+        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      ))
+      with check (exists (
+        select 1 from public.staff_email_allowlist a
+        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      ));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='infraction_types' and policyname='infraction_types_staff_email') then
+    create policy infraction_types_staff_email on public.infraction_types
+      for all to authenticated
+      using (exists (
+        select 1 from public.staff_email_allowlist a
+        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      ))
+      with check (exists (
+        select 1 from public.staff_email_allowlist a
+        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      ));
+  end if;
+  drop policy if exists incidents_staff_email on public.incidents;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incidents' and policyname='incidents_select_admin_or_owner') then
+    create policy incidents_select_admin_or_owner on public.incidents
+      for select to authenticated
+      using (
+        public.current_user_role() = 'admin'
+        or lower(coalesce(recorded_by_email, '')) = public.current_user_email()
+      );
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incidents' and policyname='incidents_insert_admin_or_self') then
+    create policy incidents_insert_admin_or_self on public.incidents
+      for insert to authenticated
+      with check (
+        public.current_user_role() = 'admin'
+        or lower(coalesce(recorded_by_email, '')) = public.current_user_email()
+      );
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incidents' and policyname='incidents_update_admin_or_owner') then
+    create policy incidents_update_admin_or_owner on public.incidents
+      for update to authenticated
+      using (
+        public.current_user_role() = 'admin'
+        or lower(coalesce(recorded_by_email, '')) = public.current_user_email()
+      )
+      with check (
+        public.current_user_role() = 'admin'
+        or lower(coalesce(recorded_by_email, '')) = public.current_user_email()
+      );
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incidents' and policyname='incidents_delete_admin_only') then
+    create policy incidents_delete_admin_only on public.incidents
+      for delete to authenticated
+      using (public.current_user_role() = 'admin');
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='mail' and policyname='mail_staff_email') then
+    create policy mail_staff_email on public.mail
+      for all to authenticated
+      using (exists (
+        select 1 from public.staff_email_allowlist a
+        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      ))
+      with check (exists (
+        select 1 from public.staff_email_allowlist a
+        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      ));
   end if;
 
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='user_roles' and policyname='user_roles_select_own') then
     create policy user_roles_select_own on public.user_roles
       for select to authenticated using (user_id = auth.uid());
-  end if;
-end
-$$;
-
--- Anonymous key (VITE_SUPABASE_ANON_KEY) uses role `anon`. Firebase login does not set Supabase JWT,
--- so without these policies inserts/selects fail. Tighten before production (e.g. Supabase Auth + policies).
-do $$
-begin
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='students' and policyname='students_all_anon') then
-    create policy students_all_anon on public.students for all to anon using (true) with check (true);
-  end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='infraction_types' and policyname='infraction_types_all_anon') then
-    create policy infraction_types_all_anon on public.infraction_types for all to anon using (true) with check (true);
-  end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incidents' and policyname='incidents_all_anon') then
-    create policy incidents_all_anon on public.incidents for all to anon using (true) with check (true);
-  end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='mail' and policyname='mail_all_anon') then
-    create policy mail_all_anon on public.mail for all to anon using (true) with check (true);
   end if;
 end
 $$;

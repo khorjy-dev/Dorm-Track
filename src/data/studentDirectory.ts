@@ -1,14 +1,16 @@
-import { supabase } from '../lib/supabase';
+import { supabase, withAuthTokenLockRetry } from '../lib/supabase';
 import type { StudentRecord } from '../types/student';
 
 export function subscribeStudents(onData: (students: StudentRecord[]) => void, onError?: (err: unknown) => void) {
   let alive = true;
 
   const fetchOnce = async () => {
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
-      .order('first_name', { ascending: true });
+    const { data, error } = await withAuthTokenLockRetry(() =>
+      supabase
+        .from('students')
+        .select('*')
+        .order('first_name', { ascending: true }),
+    );
 
     if (!alive) return;
     if (error) {

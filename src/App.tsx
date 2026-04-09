@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Box, Button, Paper, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import IncidentLoggerApp, { type SubmittedIncident } from './IncidentLoggerApp';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import StaffLoginPage from './pages/StaffLoginPage';
@@ -7,6 +7,7 @@ import StaffReviewPage from './pages/StaffReviewPage';
 import StudentDirectoryPage from './pages/StudentDirectoryPage';
 import AllStudentsPage from './pages/AllStudentsPage';
 import InfractionTypesPage from './pages/InfractionTypesPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import { subscribeStudents } from './data/studentDirectory';
 import { resolveStudentLabel, STUDENT_OPTIONS } from './data/students';
 import { toStudentOption, type StudentRecord } from './types/student';
@@ -24,19 +25,37 @@ function displayError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-type View = 'create' | 'review' | 'students' | 'allStudents' | 'infractions';
+type View = 'create' | 'review' | 'students' | 'allStudents' | 'infractions' | 'users';
+const VIEW_STORAGE_KEY = 'dormtrack:view';
+
+function isView(value: unknown): value is View {
+  return (
+    value === 'create' ||
+    value === 'review' ||
+    value === 'students' ||
+    value === 'allStudents' ||
+    value === 'infractions' ||
+    value === 'users'
+  );
+}
 
 function AuthRoot() {
-  const { user, logout, has } = useAuth();
+  const { user, logout, has, loading } = useAuth();
   const [incidents, setIncidents] = React.useState<SubmittedIncident[]>([]);
   const [students, setStudents] = React.useState<StudentRecord[]>([]);
   const [infractionTypes, setInfractionTypes] = React.useState<string[]>(DEFAULT_INFRACTION_TYPES);
   const [studentLoadError, setStudentLoadError] = React.useState<string | null>(null);
+  const [incidentsLoadError, setIncidentsLoadError] = React.useState<string | null>(null);
   const [emailNotice, setEmailNotice] = React.useState<string | null>(null);
   const [view, setView] = React.useState<View>(() => {
-    // Default view picked after login.
-    return 'create';
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem(VIEW_STORAGE_KEY) : null;
+    return isView(stored) ? stored : 'create';
   });
+
+  const setViewAndPersist = React.useCallback((next: View) => {
+    setView(next);
+    window.localStorage.setItem(VIEW_STORAGE_KEY, next);
+  }, []);
 
   React.useEffect(() => {
     if (!user) return;
@@ -66,9 +85,12 @@ function AuthRoot() {
   React.useEffect(() => {
     if (!user) return;
     const unsub = subscribeIncidents(
-      (rows) => setIncidents(rows),
-      () => {
-        // keep UI alive; optionally surface later
+      (rows) => {
+        setIncidents(rows);
+        setIncidentsLoadError(null);
+      },
+      (err) => {
+        setIncidentsLoadError(displayError(err, 'Failed to load incidents.'));
       },
     );
     return () => unsub();
@@ -76,57 +98,65 @@ function AuthRoot() {
 
   React.useEffect(() => {
     if (!user) return;
-    const defaultView: View = has('incident:create') ? 'create' : 'review';
-    setView(defaultView);
-  }, [user, has]);
+    const canUseCurrent =
+      (view === 'create' && has('incident:create')) ||
+      (view === 'review' && has('incident:review')) ||
+      ((view === 'students' || view === 'allStudents' || view === 'infractions') && has('staff:manage')) ||
+      (view === 'users' && has('users:manage'));
+    if (canUseCurrent) return;
+    const fallback: View = has('incident:create') ? 'create' : has('incident:review') ? 'review' : 'create';
+    setViewAndPersist(fallback);
+  }, [user, has, view, setViewAndPersist]);
 
-  const handleIncidentSubmitted = (incident: SubmittedIncident) => {
-    void createIncident(incident)
-      .then(() => {
-        // list auto-refreshes via subscribeIncidents
-      })
-      .catch((err) => {
-        setEmailNotice(`Incident save error: ${displayError(err, 'Failed to save incident.')}`);
-      });
+  const handleIncidentSubmitted = async (incident: SubmittedIncident) => {
+    const withRecorder = { ...incident, recordedByEmail: user?.email?.trim() ?? '' };
+    await createIncident(withRecorder);
+    // Show immediate success and reflect the new row before polling catches up.
+    setIncidents((prev) => (prev.some((x) => x.id === withRecorder.id) ? prev : [withRecorder, ...prev]));
+    setEmailNotice('Incident successfully logged.');
 
-    if (!incident.sendEmailNotifications) {
-      setEmailNotice('Email notifications are disabled for this incident.');
-      if (has('incident:review')) setView('review');
-      return;
-    }
-
-    const studentsById = new Map(students.map((s) => [s.id, s] as const));
-    void queueInfractionEmails(incident, studentsById)
-      .then((count) => {
-        void updateIncident({
-          ...incident,
+    if (withRecorder.sendEmailNotifications) {
+      const studentsById = new Map(students.map((s) => [s.id, s] as const));
+      try {
+        const count = await queueInfractionEmails(withRecorder, studentsById);
+        await updateIncident({
+          ...withRecorder,
           emailStatus: 'queued',
           emailQueuedCount: count,
           emailError: '',
         });
-        if (count > 0) {
-          setEmailNotice(`Queued ${count} email notification(s).`);
-        } else {
-          setEmailNotice('No recipient email addresses found for selected students.');
-        }
-      })
-      .catch((err) => {
+        setEmailNotice(
+          count > 0
+            ? `Incident successfully logged. Queued ${count} email notification(s).`
+            : 'Incident successfully logged. No recipient email addresses found for selected students.',
+        );
+      } catch (err) {
         const msg = displayError(err, 'Failed to queue email notifications.');
-        void updateIncident({
-          ...incident,
+        await updateIncident({
+          ...withRecorder,
           emailStatus: 'queue_failed',
           emailQueuedCount: 0,
           emailError: msg,
         });
-        setEmailNotice(`Email queue error: ${msg}`);
-      });
+        setEmailNotice(`Incident successfully logged. Email queue error: ${msg}`);
+      }
+    } else {
+      setEmailNotice('Incident successfully logged. Email notifications are disabled for this incident.');
+    }
 
     // After submitting, staff can review; RA stays in create view.
-    if (has('incident:review')) setView('review');
+    if (has('incident:review')) setViewAndPersist('review');
   };
 
   const handleDeleteIncident = (id: string) => {
-    void deleteIncident(id);
+    void deleteIncident(id)
+      .then(() => {
+        setIncidents((prev) => prev.filter((x) => x.id !== id));
+        setEmailNotice('Record has been deleted.');
+      })
+      .catch((err) => {
+        setEmailNotice(`Delete error: ${displayError(err, 'Failed to delete record.')}`);
+      });
   };
 
   const handleUpdateIncident = (updatedIncident: SubmittedIncident) => {
@@ -135,6 +165,19 @@ function AuthRoot() {
 
   const studentOptions = students.length > 0 ? students.map(toStudentOption) : STUDENT_OPTIONS;
   const studentLabelById = new Map<string, string>(studentOptions.map((s) => [s.id, s.label] as const));
+
+  if (loading) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', bgcolor: '#f6f7fb' }}>
+        <Stack spacing={1.5} alignItems="center">
+          <CircularProgress size={28} />
+          <Typography variant="body2" color="text.secondary">
+            Restoring session...
+          </Typography>
+        </Stack>
+      </Box>
+    );
+  }
 
   if (!user) return <StaffLoginPage />;
 
@@ -151,19 +194,19 @@ function AuthRoot() {
 
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             {has('incident:create') && (
-              <Button variant={view === 'create' ? 'contained' : 'outlined'} onClick={() => setView('create')}>
+              <Button variant={view === 'create' ? 'contained' : 'outlined'} onClick={() => setViewAndPersist('create')}>
                 Log incident
               </Button>
             )}
             {has('incident:review') && (
-              <Button variant={view === 'review' ? 'contained' : 'outlined'} onClick={() => setView('review')}>
+              <Button variant={view === 'review' ? 'contained' : 'outlined'} onClick={() => setViewAndPersist('review')}>
                 Review incidents
               </Button>
             )}
             {has('staff:manage') && (
               <Button
                 variant={view === 'infractions' ? 'contained' : 'outlined'}
-                onClick={() => setView('infractions')}
+                onClick={() => setViewAndPersist('infractions')}
               >
                 Infraction types
               </Button>
@@ -171,14 +214,19 @@ function AuthRoot() {
             {has('staff:manage') && (
               <Button
                 variant={view === 'allStudents' ? 'contained' : 'outlined'}
-                onClick={() => setView('allStudents')}
+                onClick={() => setViewAndPersist('allStudents')}
               >
                 Student list
               </Button>
             )}
             {has('staff:manage') && (
-              <Button variant={view === 'students' ? 'contained' : 'outlined'} onClick={() => setView('students')}>
+              <Button variant={view === 'students' ? 'contained' : 'outlined'} onClick={() => setViewAndPersist('students')}>
                 Manage students
+              </Button>
+            )}
+            {has('users:manage') && (
+              <Button variant={view === 'users' ? 'contained' : 'outlined'} onClick={() => setViewAndPersist('users')}>
+                Manage users
               </Button>
             )}
             <Button variant="text" color="inherit" onClick={logout}>
@@ -192,6 +240,13 @@ function AuthRoot() {
         {studentLoadError && (
           <Box sx={{ px: 2 }}>
             <Alert severity="warning">{studentLoadError}</Alert>
+          </Box>
+        )}
+        {incidentsLoadError && (
+          <Box sx={{ px: 2, mt: 1 }}>
+            <Alert severity="warning" onClose={() => setIncidentsLoadError(null)}>
+              {incidentsLoadError}
+            </Alert>
           </Box>
         )}
         {emailNotice && (
@@ -232,6 +287,7 @@ function AuthRoot() {
           />
         )}
         {view === 'allStudents' && has('staff:manage') && <AllStudentsPage students={students} />}
+        {view === 'users' && has('users:manage') && <AdminUsersPage />}
       </Box>
     </Box>
   );

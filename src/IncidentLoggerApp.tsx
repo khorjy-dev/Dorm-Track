@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -60,9 +61,11 @@ export type SubmittedIncident = {
   sendEmailNotifications: boolean;
   studentEmailTemplate: string;
   parentEmailTemplate: string;
-  emailStatus: 'not_requested' | 'queued' | 'queue_failed';
+  emailStatus: 'not_requested' | 'queued' | 'queue_failed' | 'sent';
   emailQueuedCount: number;
   emailError: string;
+  /** Set by App from the signed-in user when saving; empty in the logger form. */
+  recordedByEmail: string;
 };
 
 type IncidentFormState = {
@@ -123,7 +126,7 @@ const DEFAULT_PARENT_EMAIL_TEMPLATE =
   'Hello {{name}},\n\nThis is to notify you that a student infraction has been logged.\nStudents: {{students}}\nDate/Time: {{datetime}}\nLocation: {{location}}\nType: {{infractionType}}\nSeverity: {{severity}}\nDescription: {{description}}\nActions: {{actions}}';
 
 export default function IncidentLoggerApp(props: {
-  onIncidentSubmitted?: (incident: SubmittedIncident) => void;
+  onIncidentSubmitted?: (incident: SubmittedIncident) => Promise<void> | void;
   studentOptions?: StudentOption[];
   infractionTypes?: string[];
 }) {
@@ -133,6 +136,8 @@ export default function IncidentLoggerApp(props: {
   }, [studentOptions]);
 
   const [activeStep, setActiveStep] = React.useState(0);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const [form, setForm] = React.useState<IncidentFormState>({
     students: [],
@@ -144,7 +149,7 @@ export default function IncidentLoggerApp(props: {
     actionsTaken: [],
     actionsOther: '',
     media: [],
-    sendEmailNotifications: true,
+    sendEmailNotifications: false,
     studentEmailTemplate: DEFAULT_STUDENT_EMAIL_TEMPLATE,
     parentEmailTemplate: DEFAULT_PARENT_EMAIL_TEMPLATE,
   });
@@ -169,69 +174,80 @@ export default function IncidentLoggerApp(props: {
   const handleBack = () => setActiveStep((s) => Math.max(s - 1, 0));
 
   const onSubmit = async () => {
-    // Convert attached files to data URLs so they can be rendered later by other staff users.
-    // This is a prototype approach; for production use Supabase Storage instead.
-    const mediaToRevoke = form.media;
-    const mediaWithData: IncidentMediaMeta[] = await Promise.all(
-      form.media.map(async (m) => {
-        const dataUrl = await fileToDataUrl(m.file);
-        return {
-          id: m.id,
-          fileName: m.file.name,
-          kind: m.kind,
-          dataUrl,
-        };
-      }),
-    );
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      // Convert attached files to data URLs so they can be rendered later by other staff users.
+      // This is a prototype approach; for production use Supabase Storage instead.
+      const mediaToRevoke = form.media;
+      const mediaWithData: IncidentMediaMeta[] = await Promise.all(
+        form.media.map(async (m) => {
+          const dataUrl = await fileToDataUrl(m.file);
+          return {
+            id: m.id,
+            fileName: m.file.name,
+            kind: m.kind,
+            dataUrl,
+          };
+        }),
+      );
 
-    const incident: SubmittedIncident = {
-      id: makeId('incident'),
-      submittedAt: new Date().toISOString(),
-      studentIds: form.students,
-      students: form.students.map((id) => studentLabelById.get(id) ?? resolveStudentLabel(id)),
-      datetimeLocal: form.datetimeLocal,
-      location: form.location,
-      infractionType: form.infractionType,
-      severity: form.severity,
-      description: form.description,
-      actionsTaken: form.actionsTaken,
-      actionsOther: form.actionsOther,
-      media: mediaWithData,
-      sendEmailNotifications: form.sendEmailNotifications,
-      studentEmailTemplate: form.studentEmailTemplate,
-      parentEmailTemplate: form.parentEmailTemplate,
-      emailStatus: form.sendEmailNotifications ? 'not_requested' : 'not_requested',
-      emailQueuedCount: 0,
-      emailError: '',
-    };
+      const incident: SubmittedIncident = {
+        id: makeId('incident'),
+        submittedAt: new Date().toISOString(),
+        studentIds: form.students,
+        students: form.students.map((id) => studentLabelById.get(id) ?? resolveStudentLabel(id)),
+        datetimeLocal: form.datetimeLocal,
+        location: form.location,
+        infractionType: form.infractionType,
+        severity: form.severity,
+        description: form.description,
+        actionsTaken: form.actionsTaken,
+        actionsOther: form.actionsOther,
+        media: mediaWithData,
+        sendEmailNotifications: form.sendEmailNotifications,
+        studentEmailTemplate: form.studentEmailTemplate,
+        parentEmailTemplate: form.parentEmailTemplate,
+        emailStatus: form.sendEmailNotifications ? 'not_requested' : 'not_requested',
+        emailQueuedCount: 0,
+        emailError: '',
+        recordedByEmail: '',
+      };
 
-    // eslint-disable-next-line no-console
-    console.log('SUBMIT INCIDENT', incident);
+      // eslint-disable-next-line no-console
+      console.log('SUBMIT INCIDENT', incident);
 
-    if (onIncidentSubmitted) {
-      onIncidentSubmitted(incident);
-    } else {
-      alert('Incident submitted (mock). Check console for payload.');
+      if (onIncidentSubmitted) {
+        await onIncidentSubmitted(incident);
+      } else {
+        alert('Incident submitted (mock). Check console for payload.');
+      }
+
+      // Clean up local object URLs (we also store permanent data URLs now).
+      mediaToRevoke.forEach((m) => URL.revokeObjectURL(m.previewUrl));
+
+      setActiveStep(0);
+      setForm({
+        students: [],
+        datetimeLocal: toLocalDatetimeInput(new Date()),
+        location: '',
+        infractionType: '',
+        severity: 'low',
+        description: '',
+        actionsTaken: [],
+        actionsOther: '',
+        media: [],
+        sendEmailNotifications: false,
+        studentEmailTemplate: DEFAULT_STUDENT_EMAIL_TEMPLATE,
+        parentEmailTemplate: DEFAULT_PARENT_EMAIL_TEMPLATE,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to prepare incident data for submit.';
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Clean up local object URLs (we also store permanent data URLs now).
-    mediaToRevoke.forEach((m) => URL.revokeObjectURL(m.previewUrl));
-
-    setActiveStep(0);
-    setForm({
-      students: [],
-      datetimeLocal: toLocalDatetimeInput(new Date()),
-      location: '',
-      infractionType: '',
-      severity: 'low',
-      description: '',
-      actionsTaken: [],
-      actionsOther: '',
-      media: [],
-      sendEmailNotifications: true,
-      studentEmailTemplate: DEFAULT_STUDENT_EMAIL_TEMPLATE,
-      parentEmailTemplate: DEFAULT_PARENT_EMAIL_TEMPLATE,
-    });
   };
 
   return (
@@ -270,7 +286,14 @@ export default function IncidentLoggerApp(props: {
           {activeStep === 2 && <MediaStep form={form} setForm={setForm} onBack={handleBack} onNext={handleNext} />}
 
           {activeStep === 3 && (
-            <ReviewStep form={form} onBack={handleBack} onSubmit={onSubmit} studentLabelById={studentLabelById} />
+            <ReviewStep
+              form={form}
+              onBack={handleBack}
+              onSubmit={onSubmit}
+              studentLabelById={studentLabelById}
+              isSubmitting={isSubmitting}
+              submitError={submitError}
+            />
           )}
         </Paper>
       </Container>
@@ -669,8 +692,10 @@ function ReviewStep(props: {
   onBack: () => void;
   onSubmit: () => void | Promise<void>;
   studentLabelById: Map<string, string>;
+  isSubmitting: boolean;
+  submitError: string | null;
 }) {
-  const { form, onBack, onSubmit, studentLabelById } = props;
+  const { form, onBack, onSubmit, studentLabelById, isSubmitting, submitError } = props;
 
   const severityLabel = form.severity === 'low' ? 'Low' : form.severity === 'medium' ? 'Medium' : 'High';
   const studentLabels = form.students.map((s) => studentLabelById.get(s) ?? s);
@@ -682,6 +707,7 @@ function ReviewStep(props: {
       </Typography>
 
       <Box sx={{ display: 'grid', gap: 1.5 }}>
+        {submitError ? <Alert severity="error">{submitError}</Alert> : null}
         <SummaryRow label="Students" value={studentLabels.length ? studentLabels.join(', ') : 'None'} />
         <SummaryRow label="When" value={form.datetimeLocal || 'Not set'} />
         <SummaryRow label="Location" value={form.location || 'Not set'} />
@@ -709,9 +735,10 @@ function ReviewStep(props: {
           onClick={() => {
             void onSubmit();
           }}
+          disabled={isSubmitting}
           sx={{ px: 3 }}
         >
-          Submit incident
+          {isSubmitting ? 'Submitting...' : 'Submit incident'}
         </Button>
       </Box>
     </Box>

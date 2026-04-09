@@ -1,5 +1,26 @@
 import type { SubmittedIncident } from '../IncidentLoggerApp';
-import { supabase } from '../lib/supabase';
+import { supabase, withAuthTokenLockRetry } from '../lib/supabase';
+
+const INCIDENT_LIST_COLUMNS = [
+  'id',
+  'submitted_at',
+  'student_ids',
+  'students',
+  'datetime_local',
+  'location',
+  'infraction_type',
+  'severity',
+  'description',
+  'actions_taken',
+  'actions_other',
+  'send_email_notifications',
+  'student_email_template',
+  'parent_email_template',
+  'email_status',
+  'email_queued_count',
+  'email_error',
+  'recorded_by_email',
+].join(', ');
 
 function fromRow(row: any): SubmittedIncident {
   return {
@@ -21,13 +42,19 @@ function fromRow(row: any): SubmittedIncident {
     emailStatus: row.email_status ?? 'not_requested',
     emailQueuedCount: row.email_queued_count ?? 0,
     emailError: row.email_error ?? '',
+    recordedByEmail: row.recorded_by_email ?? '',
   };
 }
 
 export function subscribeIncidents(onData: (incidents: SubmittedIncident[]) => void, onError?: (err: unknown) => void) {
   let alive = true;
   const fetchOnce = async () => {
-    const { data, error } = await supabase.from('incidents').select('*').order('submitted_at', { ascending: false });
+    const { data, error } = await withAuthTokenLockRetry(() =>
+      supabase
+        .from('incidents')
+        .select(INCIDENT_LIST_COLUMNS)
+        .order('submitted_at', { ascending: false }),
+    );
     if (!alive) return;
     if (error) {
       if (onError) onError(error);
@@ -44,33 +71,10 @@ export function subscribeIncidents(onData: (incidents: SubmittedIncident[]) => v
 }
 
 export async function createIncident(incident: SubmittedIncident) {
-  const { error } = await supabase.from('incidents').insert({
-    id: incident.id,
-    submitted_at: incident.submittedAt,
-    student_ids: incident.studentIds,
-    students: incident.students,
-    datetime_local: incident.datetimeLocal,
-    location: incident.location,
-    infraction_type: incident.infractionType,
-    severity: incident.severity,
-    description: incident.description,
-    actions_taken: incident.actionsTaken,
-    actions_other: incident.actionsOther,
-    media: incident.media,
-    send_email_notifications: incident.sendEmailNotifications,
-    student_email_template: incident.studentEmailTemplate,
-    parent_email_template: incident.parentEmailTemplate,
-    email_status: incident.emailStatus,
-    email_queued_count: incident.emailQueuedCount,
-    email_error: incident.emailError,
-  });
-  if (error) throw error;
-}
-
-export async function updateIncident(incident: SubmittedIncident) {
-  const { error } = await supabase
-    .from('incidents')
-    .update({
+  const { error } = await withAuthTokenLockRetry(() =>
+    supabase.from('incidents').insert({
+      id: incident.id,
+      submitted_at: incident.submittedAt,
       student_ids: incident.studentIds,
       students: incident.students,
       datetime_local: incident.datetimeLocal,
@@ -87,13 +91,50 @@ export async function updateIncident(incident: SubmittedIncident) {
       email_status: incident.emailStatus,
       email_queued_count: incident.emailQueuedCount,
       email_error: incident.emailError,
-    })
-    .eq('id', incident.id);
+      recorded_by_email: incident.recordedByEmail || null,
+    }),
+  );
+  if (error) throw error;
+}
+
+export async function updateIncident(incident: SubmittedIncident) {
+  const { error } = await withAuthTokenLockRetry(() =>
+    supabase
+      .from('incidents')
+      .update({
+        student_ids: incident.studentIds,
+        students: incident.students,
+        datetime_local: incident.datetimeLocal,
+        location: incident.location,
+        infraction_type: incident.infractionType,
+        severity: incident.severity,
+        description: incident.description,
+        actions_taken: incident.actionsTaken,
+        actions_other: incident.actionsOther,
+        media: incident.media,
+        send_email_notifications: incident.sendEmailNotifications,
+        student_email_template: incident.studentEmailTemplate,
+        parent_email_template: incident.parentEmailTemplate,
+        email_status: incident.emailStatus,
+        email_queued_count: incident.emailQueuedCount,
+        email_error: incident.emailError,
+        recorded_by_email: incident.recordedByEmail || null,
+      })
+      .eq('id', incident.id),
+  );
   if (error) throw error;
 }
 
 export async function deleteIncident(id: string) {
-  const { error } = await supabase.from('incidents').delete().eq('id', id);
+  const { error } = await withAuthTokenLockRetry(() => supabase.from('incidents').delete().eq('id', id));
   if (error) throw error;
+}
+
+export async function fetchIncidentMedia(id: string) {
+  const { data, error } = await withAuthTokenLockRetry(() =>
+    supabase.from('incidents').select('media').eq('id', id).single(),
+  );
+  if (error) throw error;
+  return (data?.media ?? []) as SubmittedIncident['media'];
 }
 

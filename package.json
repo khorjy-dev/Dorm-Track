@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:send-mail": "npx supabase functions deploy send-mail --project-ref rjexrmouaopylxufcero"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

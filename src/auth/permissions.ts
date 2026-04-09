@@ -1,14 +1,14 @@
-export type Role = 'ra' | 'staff' | 'admin';
+export type Role = 'staff' | 'admin';
 
 export type Permission =
   | 'incident:create'
   | 'incident:review'
-  | 'staff:manage';
+  | 'staff:manage'
+  | 'users:manage';
 
 export const permissionsByRole: Record<Role, Permission[]> = {
-  ra: ['incident:create'],
   staff: ['incident:create', 'incident:review', 'staff:manage'],
-  admin: ['incident:create', 'incident:review', 'staff:manage'],
+  admin: ['incident:create', 'incident:review', 'staff:manage', 'users:manage'],
 };
 
 export function hasPermission(role: Role, permission: Permission) {

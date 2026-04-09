@@ -1,0 +1,5 @@
+# Supabase CLI (https://supabase.com/docs/guides/cli)
+# Deploy: supabase functions deploy send-mail --project-ref <ref>
+
+[functions.send-mail]
+verify_jwt = false
