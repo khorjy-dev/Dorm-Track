@@ -7,7 +7,7 @@ export type Permission =
   | 'users:manage';
 
 export const permissionsByRole: Record<Role, Permission[]> = {
-  staff: ['incident:create', 'incident:review', 'staff:manage'],
+  staff: ['incident:create', 'incident:review'],
   admin: ['incident:create', 'incident:review', 'staff:manage', 'users:manage'],
 };
 

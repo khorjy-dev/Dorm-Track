@@ -24,6 +24,13 @@ create table if not exists public.infraction_types (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.incident_locations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  position int not null default 1,
+  created_at timestamptz not null default now()
+);
+
 -- Legacy: user_id -> role (optional; app uses staff_email_allowlist).
 create table if not exists public.user_roles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -121,6 +128,7 @@ grant execute on function public.current_user_role() to postgres;
 -- Row level security: JWT email must exist in staff_email_allowlist. Bootstrap: supabase/bootstrap-staff.sql
 alter table public.students enable row level security;
 alter table public.infraction_types enable row level security;
+alter table public.incident_locations enable row level security;
 alter table public.user_roles enable row level security;
 alter table public.staff_email_allowlist enable row level security;
 alter table public.incidents enable row level security;
@@ -177,6 +185,12 @@ begin
         select 1 from public.staff_email_allowlist a
         where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
       ));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incident_locations' and policyname='incident_locations_admin_only') then
+    create policy incident_locations_admin_only on public.incident_locations
+      for all to authenticated
+      using (public.current_user_role() = 'admin')
+      with check (public.current_user_role() = 'admin');
   end if;
   drop policy if exists incidents_staff_email on public.incidents;
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='incidents' and policyname='incidents_select_admin_or_owner') then
@@ -240,5 +254,13 @@ values
   ('Missing from room', 3),
   ('Guest violation', 4),
   ('Other', 5)
+on conflict (name) do nothing;
+
+insert into public.incident_locations(name, position)
+values
+  ('3rd Floor Hallway', 1),
+  ('Common Room', 2),
+  ('Outside Entrance', 3),
+  ('Student Room', 4)
 on conflict (name) do nothing;
 

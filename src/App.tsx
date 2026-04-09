@@ -1,5 +1,16 @@
 import React from 'react';
-import { Alert, Box, Button, CircularProgress, Paper, Snackbar, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Menu,
+  MenuItem,
+  Paper,
+  Snackbar,
+  Stack,
+  Typography,
+} from '@mui/material';
 import IncidentLoggerApp, { type SubmittedIncident } from './IncidentLoggerApp';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import StaffLoginPage from './pages/StaffLoginPage';
@@ -8,6 +19,7 @@ import StudentDirectoryPage from './pages/StudentDirectoryPage';
 import AllStudentsPage from './pages/AllStudentsPage';
 import InfractionTypesPage from './pages/InfractionTypesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import LocationsPage from './pages/LocationsPage';
 import { subscribeStudents } from './data/studentDirectory';
 import { resolveStudentLabel, STUDENT_OPTIONS } from './data/students';
 import { toStudentOption, type StudentRecord } from './types/student';
@@ -15,6 +27,8 @@ import { DEFAULT_INFRACTION_TYPES } from './data/infractionTypes';
 import { queueInfractionEmails } from './data/incidentEmailQueue';
 import { createIncident, deleteIncident, subscribeIncidents, updateIncident } from './data/incidentStore';
 import { replaceInfractionTypes, subscribeInfractionTypes } from './data/infractionTypesStore';
+import { DEFAULT_LOCATIONS } from './data/locations';
+import { replaceLocations, subscribeLocations } from './data/locationsStore';
 
 function displayError(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'message' in err) {
@@ -25,7 +39,7 @@ function displayError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-type View = 'create' | 'review' | 'students' | 'allStudents' | 'infractions' | 'users';
+type View = 'create' | 'review' | 'students' | 'allStudents' | 'infractions' | 'users' | 'locations';
 const VIEW_STORAGE_KEY = 'dormtrack:view';
 
 function isView(value: unknown): value is View {
@@ -35,7 +49,8 @@ function isView(value: unknown): value is View {
     value === 'students' ||
     value === 'allStudents' ||
     value === 'infractions' ||
-    value === 'users'
+    value === 'users' ||
+    value === 'locations'
   );
 }
 
@@ -44,10 +59,12 @@ function AuthRoot() {
   const [incidents, setIncidents] = React.useState<SubmittedIncident[]>([]);
   const [students, setStudents] = React.useState<StudentRecord[]>([]);
   const [infractionTypes, setInfractionTypes] = React.useState<string[]>(DEFAULT_INFRACTION_TYPES);
+  const [locations, setLocations] = React.useState<string[]>(DEFAULT_LOCATIONS);
   const [studentLoadError, setStudentLoadError] = React.useState<string | null>(null);
   const [incidentsLoadError, setIncidentsLoadError] = React.useState<string | null>(null);
   const [emailNotice, setEmailNotice] = React.useState<string | null>(null);
   const [toast, setToast] = React.useState<{ message: string; severity: 'info' | 'warning' | 'error' } | null>(null);
+  const [manageAnchorEl, setManageAnchorEl] = React.useState<null | HTMLElement>(null);
   const [view, setView] = React.useState<View>(() => {
     const stored = typeof window !== 'undefined' ? window.localStorage.getItem(VIEW_STORAGE_KEY) : null;
     return isView(stored) ? stored : 'create';
@@ -69,6 +86,17 @@ function AuthRoot() {
         const msg = displayError(err, 'Failed to load student directory.');
         setStudentLoadError(msg);
         setToast({ message: msg, severity: 'warning' });
+      },
+    );
+    return () => unsub();
+  }, [user]);
+
+  React.useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeLocations(
+      (rows) => setLocations(rows),
+      () => {
+        // keep defaults when unavailable
       },
     );
     return () => unsub();
@@ -106,7 +134,8 @@ function AuthRoot() {
     const canUseCurrent =
       (view === 'create' && has('incident:create')) ||
       (view === 'review' && has('incident:review')) ||
-      ((view === 'students' || view === 'allStudents' || view === 'infractions') && has('staff:manage')) ||
+      ((view === 'students' || view === 'allStudents' || view === 'infractions' || view === 'locations') &&
+        has('users:manage')) ||
       (view === 'users' && has('users:manage'));
     if (canUseCurrent) return;
     const fallback: View = has('incident:create') ? 'create' : has('incident:review') ? 'review' : 'create';
@@ -221,6 +250,7 @@ function AuthRoot() {
               gap: 1,
               width: { xs: '100%', sm: 'auto' },
               minWidth: { sm: 520 },
+              alignItems: 'stretch',
               '& .MuiButton-root': {
                 whiteSpace: 'normal',
                 textAlign: 'center',
@@ -250,46 +280,65 @@ function AuthRoot() {
                 Review incidents
               </Button>
             )}
-            {has('staff:manage') && (
-              <Button
-                fullWidth
-                variant={view === 'infractions' ? 'contained' : 'outlined'}
-                onClick={() => setViewAndPersist('infractions')}
-              >
-                Infraction types
-              </Button>
-            )}
-            {has('staff:manage') && (
-              <Button
-                fullWidth
-                variant={view === 'allStudents' ? 'contained' : 'outlined'}
-                onClick={() => setViewAndPersist('allStudents')}
-              >
-                Student list
-              </Button>
-            )}
-            {has('staff:manage') && (
-              <Button
-                fullWidth
-                variant={view === 'students' ? 'contained' : 'outlined'}
-                onClick={() => setViewAndPersist('students')}
-              >
-                Manage students
-              </Button>
-            )}
             {has('users:manage') && (
               <Button
                 fullWidth
-                variant={view === 'users' ? 'contained' : 'outlined'}
-                onClick={() => setViewAndPersist('users')}
+                variant={
+                  view === 'infractions' || view === 'allStudents' || view === 'students' || view === 'users' || view === 'locations'
+                    ? 'contained'
+                    : 'outlined'
+                }
+                onClick={(event) => setManageAnchorEl(event.currentTarget)}
               >
-                Manage users
+                Manage
               </Button>
             )}
             <Button fullWidth variant="outlined" color="inherit" onClick={logout}>
               Sign out
             </Button>
           </Box>
+          <Menu anchorEl={manageAnchorEl} open={Boolean(manageAnchorEl)} onClose={() => setManageAnchorEl(null)}>
+            <MenuItem
+              onClick={() => {
+                setViewAndPersist('users');
+                setManageAnchorEl(null);
+              }}
+            >
+              Manage users
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setViewAndPersist('students');
+                setManageAnchorEl(null);
+              }}
+            >
+              Manage students
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setViewAndPersist('allStudents');
+                setManageAnchorEl(null);
+              }}
+            >
+              Student list
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setViewAndPersist('infractions');
+                setManageAnchorEl(null);
+              }}
+            >
+              Manage infraction types
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setViewAndPersist('locations');
+                setManageAnchorEl(null);
+              }}
+            >
+              Manage locations
+            </MenuItem>
+          </Menu>
         </Stack>
       </Paper>
 
@@ -318,6 +367,7 @@ function AuthRoot() {
             onIncidentSubmitted={handleIncidentSubmitted}
             studentOptions={studentOptions}
             infractionTypes={infractionTypes}
+            locationOptions={locations}
           />
         )}
 
@@ -330,8 +380,8 @@ function AuthRoot() {
           />
         )}
 
-        {view === 'students' && has('staff:manage') && <StudentDirectoryPage />}
-        {view === 'infractions' && has('staff:manage') && (
+        {view === 'students' && has('users:manage') && <StudentDirectoryPage />}
+        {view === 'infractions' && has('users:manage') && (
           <InfractionTypesPage
             infractionTypes={infractionTypes}
             onChange={(next) => {
@@ -343,7 +393,19 @@ function AuthRoot() {
             }}
           />
         )}
-        {view === 'allStudents' && has('staff:manage') && <AllStudentsPage students={students} />}
+        {view === 'locations' && has('users:manage') && (
+          <LocationsPage
+            locations={locations}
+            onChange={(next) => {
+              setLocations(next);
+              void replaceLocations(next).catch((err) => {
+                const msg = err && typeof err === 'object' && 'message' in err ? String((err as any).message) : 'Failed to save locations.';
+                setEmailNotice(`Locations save error: ${msg}`);
+              });
+            }}
+          />
+        )}
+        {view === 'allStudents' && has('users:manage') && <AllStudentsPage students={students} />}
         {view === 'users' && has('users:manage') && <AdminUsersPage />}
       </Box>
       <Snackbar

@@ -129,8 +129,14 @@ export default function IncidentLoggerApp(props: {
   onIncidentSubmitted?: (incident: SubmittedIncident) => Promise<void> | void;
   studentOptions?: StudentOption[];
   infractionTypes?: string[];
+  locationOptions?: string[];
 }) {
-  const { onIncidentSubmitted, studentOptions = STUDENT_OPTIONS, infractionTypes = ['Other'] } = props;
+  const {
+    onIncidentSubmitted,
+    studentOptions = STUDENT_OPTIONS,
+    infractionTypes = ['Other'],
+    locationOptions: locationOptionsProp = locationOptions as unknown as string[],
+  } = props;
   const studentLabelById = React.useMemo(() => {
     return new Map(studentOptions.map((s) => [s.id, s.label]));
   }, [studentOptions]);
@@ -274,7 +280,7 @@ export default function IncidentLoggerApp(props: {
               form={form}
               setForm={setForm}
               studentsOptions={studentOptions}
-              locationOptions={locationOptions as unknown as string[]}
+              locationOptions={locationOptionsProp}
               infractionTypes={infractionTypes}
               canProceed={canProceedBasics}
               onNext={handleNext}

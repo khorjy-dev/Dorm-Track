@@ -19,6 +19,14 @@ alter table public.user_roles drop constraint if exists user_roles_role_check;
 alter table public.user_roles
   add constraint user_roles_role_check check (role in ('staff', 'admin'));
 
+-- 2b) Ensure incident location management table exists
+create table if not exists public.incident_locations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  position int not null default 1,
+  created_at timestamptz not null default now()
+);
+
 -- 3) Helper functions for RLS checks
 create or replace function public.current_user_email()
 returns text
@@ -124,3 +132,23 @@ on public.staff_email_allowlist
 for delete
 to authenticated
 using (public.current_user_role() = 'admin');
+
+-- 6) incident location management: admin only
+alter table public.incident_locations enable row level security;
+
+drop policy if exists incident_locations_admin_only on public.incident_locations;
+
+create policy incident_locations_admin_only
+on public.incident_locations
+for all
+to authenticated
+using (public.current_user_role() = 'admin')
+with check (public.current_user_role() = 'admin');
+
+insert into public.incident_locations(name, position)
+values
+  ('3rd Floor Hallway', 1),
+  ('Common Room', 2),
+  ('Outside Entrance', 3),
+  ('Student Room', 4)
+on conflict (name) do nothing;
