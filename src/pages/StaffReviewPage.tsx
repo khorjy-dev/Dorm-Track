@@ -44,6 +44,7 @@ export default function StaffReviewPage(props: {
 
   const [dateFrom, setDateFrom] = React.useState<string>('');
   const [dateTo, setDateTo] = React.useState<string>('');
+  const [searchTerm, setSearchTerm] = React.useState<string>('');
   const [studentFilter, setStudentFilter] = React.useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = React.useState<Severity | ''>('');
   const [editingIncidentId, setEditingIncidentId] = React.useState<string | null>(null);
@@ -64,19 +65,30 @@ export default function StaffReviewPage(props: {
   const filteredIncidents = React.useMemo(() => {
     const from = dateFrom?.trim();
     const to = dateTo?.trim();
+    const query = searchTerm.trim().toLowerCase();
 
     return incidents.filter((inc) => {
       const datePart = (inc.datetimeLocal || '').slice(0, 10); // YYYY-MM-DD
       const displayStudents = inc.students.map(resolveStudent);
+      const searchIndex = [
+        inc.infractionType,
+        inc.location,
+        inc.description,
+        inc.recordedByEmail,
+        displayStudents.join(' '),
+      ]
+        .join(' ')
+        .toLowerCase();
 
       if (from && datePart < from) return false;
       if (to && datePart > to) return false;
 
       if (studentFilter && !displayStudents.includes(studentFilter)) return false;
       if (severityFilter && inc.severity !== severityFilter) return false;
+      if (query && !searchIndex.includes(query)) return false;
       return true;
     });
-  }, [incidents, dateFrom, dateTo, studentFilter, severityFilter, resolveStudent]);
+  }, [incidents, dateFrom, dateTo, searchTerm, studentFilter, severityFilter, resolveStudent]);
 
   const editingIncident = React.useMemo(
     () => incidents.find((x) => x.id === editingIncidentId) ?? null,
@@ -187,6 +199,14 @@ export default function StaffReviewPage(props: {
             InputLabelProps={{ shrink: true }}
           />
 
+          <TextField
+            label="Search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Type, location, description, student, or recorder"
+            sx={{ gridColumn: { xs: '1 / -1', sm: '1 / -1' } }}
+          />
+
           <Box sx={{ gridColumn: { xs: '1 / -1', sm: '1 / -1' } }}>
             <Autocomplete
               options={allStudentIds}
@@ -225,10 +245,11 @@ export default function StaffReviewPage(props: {
               onClick={() => {
                 setDateFrom('');
                 setDateTo('');
+                setSearchTerm('');
                 setStudentFilter(null);
                 setSeverityFilter('');
               }}
-              disabled={!dateFrom && !dateTo && !studentFilter && !severityFilter}
+              disabled={!dateFrom && !dateTo && !searchTerm && !studentFilter && !severityFilter}
             >
               Clear filters
             </Button>

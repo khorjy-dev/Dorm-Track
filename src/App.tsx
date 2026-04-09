@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Paper, Snackbar, Stack, Typography } from '@mui/material';
 import IncidentLoggerApp, { type SubmittedIncident } from './IncidentLoggerApp';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import StaffLoginPage from './pages/StaffLoginPage';
@@ -47,6 +47,7 @@ function AuthRoot() {
   const [studentLoadError, setStudentLoadError] = React.useState<string | null>(null);
   const [incidentsLoadError, setIncidentsLoadError] = React.useState<string | null>(null);
   const [emailNotice, setEmailNotice] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<{ message: string; severity: 'info' | 'warning' | 'error' } | null>(null);
   const [view, setView] = React.useState<View>(() => {
     const stored = typeof window !== 'undefined' ? window.localStorage.getItem(VIEW_STORAGE_KEY) : null;
     return isView(stored) ? stored : 'create';
@@ -65,7 +66,9 @@ function AuthRoot() {
         setStudentLoadError(null);
       },
       (err) => {
-        setStudentLoadError(displayError(err, 'Failed to load student directory.'));
+        const msg = displayError(err, 'Failed to load student directory.');
+        setStudentLoadError(msg);
+        setToast({ message: msg, severity: 'warning' });
       },
     );
     return () => unsub();
@@ -90,7 +93,9 @@ function AuthRoot() {
         setIncidentsLoadError(null);
       },
       (err) => {
-        setIncidentsLoadError(displayError(err, 'Failed to load incidents.'));
+        const msg = displayError(err, 'Failed to load incidents.');
+        setIncidentsLoadError(msg);
+        setToast({ message: msg, severity: 'warning' });
       },
     );
     return () => unsub();
@@ -114,6 +119,7 @@ function AuthRoot() {
     // Show immediate success and reflect the new row before polling catches up.
     setIncidents((prev) => (prev.some((x) => x.id === withRecorder.id) ? prev : [withRecorder, ...prev]));
     setEmailNotice('Incident successfully logged.');
+    setToast({ message: 'Incident successfully logged.', severity: 'info' });
 
     if (withRecorder.sendEmailNotifications) {
       const studentsById = new Map(students.map((s) => [s.id, s] as const));
@@ -130,6 +136,13 @@ function AuthRoot() {
             ? `Incident successfully logged. Queued ${count} email notification(s).`
             : 'Incident successfully logged. No recipient email addresses found for selected students.',
         );
+        setToast({
+          message:
+            count > 0
+              ? `Queued ${count} email notification(s).`
+              : 'No recipient email addresses found for selected students.',
+          severity: 'info',
+        });
       } catch (err) {
         const msg = displayError(err, 'Failed to queue email notifications.');
         await updateIncident({
@@ -139,9 +152,11 @@ function AuthRoot() {
           emailError: msg,
         });
         setEmailNotice(`Incident successfully logged. Email queue error: ${msg}`);
+        setToast({ message: `Email queue error: ${msg}`, severity: 'error' });
       }
     } else {
       setEmailNotice('Incident successfully logged. Email notifications are disabled for this incident.');
+      setToast({ message: 'Incident logged. Email notifications are disabled.', severity: 'info' });
     }
 
     // After submitting, staff can review; RA stays in create view.
@@ -153,9 +168,12 @@ function AuthRoot() {
       .then(() => {
         setIncidents((prev) => prev.filter((x) => x.id !== id));
         setEmailNotice('Record has been deleted.');
+        setToast({ message: 'Record has been deleted.', severity: 'info' });
       })
       .catch((err) => {
-        setEmailNotice(`Delete error: ${displayError(err, 'Failed to delete record.')}`);
+        const msg = displayError(err, 'Failed to delete record.');
+        setEmailNotice(`Delete error: ${msg}`);
+        setToast({ message: `Delete error: ${msg}`, severity: 'error' });
       });
   };
 
@@ -289,6 +307,16 @@ function AuthRoot() {
         {view === 'allStudents' && has('staff:manage') && <AllStudentsPage students={students} />}
         {view === 'users' && has('users:manage') && <AdminUsersPage />}
       </Box>
+      <Snackbar
+        open={Boolean(toast)}
+        autoHideDuration={4000}
+        onClose={() => setToast(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setToast(null)} severity={toast?.severity ?? 'info'} variant="filled">
+          {toast?.message ?? ''}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

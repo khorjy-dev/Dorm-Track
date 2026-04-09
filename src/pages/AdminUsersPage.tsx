@@ -3,6 +3,10 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -44,6 +48,8 @@ export default function AdminUsersPage() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
+  const [removeEmail, setRemoveEmail] = React.useState<string | null>(null);
+  const [rowRoleDraft, setRowRoleDraft] = React.useState<Record<string, StaffRole>>({});
 
   const loadUsers = React.useCallback(async () => {
     setBusy(true);
@@ -54,7 +60,13 @@ export default function AdminUsersPage() {
         .select('email, role, created_at')
         .order('email', { ascending: true });
       if (queryError) throw queryError;
-      setRows((data ?? []) as AllowlistRow[]);
+      const nextRows = (data ?? []) as AllowlistRow[];
+      setRows(nextRows);
+      const nextDraft: Record<string, StaffRole> = {};
+      nextRows.forEach((row) => {
+        nextDraft[row.email] = row.role;
+      });
+      setRowRoleDraft(nextDraft);
     } catch (err) {
       setError(toErrorMessage(err, 'Failed to load allowlisted users.'));
     } finally {
@@ -112,6 +124,28 @@ export default function AdminUsersPage() {
       await loadUsers();
     } catch (err) {
       setError(toErrorMessage(err, 'Failed to remove user.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRoleSave = async (targetEmail: string) => {
+    const nextRole = rowRoleDraft[targetEmail];
+    if (!nextRole) return;
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const { error: updateError } = await supabase
+        .from('staff_email_allowlist')
+        .update({ role: nextRole })
+        .eq('email', targetEmail);
+      if (updateError) throw updateError;
+      setNotice(`Updated ${targetEmail} to ${nextRole}.`);
+      await loadUsers();
+    } catch (err) {
+      setError(toErrorMessage(err, 'Failed to update user role.'));
     } finally {
       setBusy(false);
     }
@@ -177,21 +211,42 @@ export default function AdminUsersPage() {
             <TableRow>
               <TableCell>Email</TableCell>
               <TableCell>Role</TableCell>
-              <TableCell align="right">Action</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.email}>
                 <TableCell>{row.email}</TableCell>
-                <TableCell>{row.role}</TableCell>
+                <TableCell sx={{ minWidth: 160 }}>
+                  <FormControl size="small" fullWidth disabled={busy}>
+                    <Select
+                      value={rowRoleDraft[row.email] ?? row.role}
+                      onChange={(e) =>
+                        setRowRoleDraft((prev) => ({ ...prev, [row.email]: e.target.value as StaffRole }))
+                      }
+                    >
+                      <MenuItem value="staff">staff</MenuItem>
+                      <MenuItem value="admin">admin</MenuItem>
+                    </Select>
+                  </FormControl>
+                </TableCell>
                 <TableCell align="right">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{ mr: 1 }}
+                    disabled={busy || (rowRoleDraft[row.email] ?? row.role) === row.role}
+                    onClick={() => void handleRoleSave(row.email)}
+                  >
+                    Save role
+                  </Button>
                   <Button
                     color="error"
                     variant="text"
                     size="small"
                     disabled={busy || row.email === (user?.email?.trim().toLowerCase() ?? '')}
-                    onClick={() => void handleRemove(row.email)}
+                    onClick={() => setRemoveEmail(row.email)}
                   >
                     Remove
                   </Button>
@@ -210,6 +265,29 @@ export default function AdminUsersPage() {
           </TableBody>
         </Table>
       </Paper>
+
+      <Dialog open={Boolean(removeEmail)} onClose={() => setRemoveEmail(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Remove user?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            {removeEmail ? `This will remove ${removeEmail} from the allowlist.` : 'Remove this user?'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemoveEmail(null)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              const target = removeEmail;
+              setRemoveEmail(null);
+              if (target) void handleRemove(target);
+            }}
+          >
+            Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
