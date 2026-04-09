@@ -109,10 +109,6 @@ export default function StaffLoginPage() {
                 {authError}
               </Alert>
             ) : null}
-            <Typography variant="body2" color="text.secondary">
-              Sign in with Google to access dorm staff features.
-            </Typography>
-
             <Button
               variant="contained"
               onClick={handleGoogleLogin}
