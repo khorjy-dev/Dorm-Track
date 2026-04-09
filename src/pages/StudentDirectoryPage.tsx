@@ -176,7 +176,7 @@ export default function StudentDirectoryPage() {
     <Container maxWidth="md" sx={{ py: 2 }}>
       <Paper elevation={1} sx={{ p: 2.5 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>
-          Add student
+          Add Student
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Add students to Firestore so incident forms can select real names.
@@ -184,7 +184,7 @@ export default function StudentDirectoryPage() {
 
         <Card variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Bulk upload via CSV
+            Bulk Upload via CSV
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Required columns: student_id, grade_level, first_name, last_name, student_email, parent_name, parent_email, room_number
@@ -213,7 +213,7 @@ export default function StudentDirectoryPage() {
               />
               <TextField
                 select
-                label="Grade level"
+                label="Grade Level"
                 value={gradeLevel}
                 onChange={(e) => setGradeLevel(e.target.value as '7' | '8' | '9' | '10' | '11' | '12')}
                 fullWidth
@@ -230,14 +230,14 @@ export default function StudentDirectoryPage() {
 
             <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
               <TextField
-                label="First name"
+                label="First Name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 fullWidth
                 required
               />
               <TextField
-                label="Last name"
+                label="Last Name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 fullWidth
@@ -247,7 +247,7 @@ export default function StudentDirectoryPage() {
 
             <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
               <TextField
-                label="Student email"
+                label="Student Email"
                 type="email"
                 value={studentEmail}
                 onChange={(e) => setStudentEmail(e.target.value)}
@@ -255,7 +255,7 @@ export default function StudentDirectoryPage() {
                 required
               />
               <TextField
-                label="Room number"
+                label="Room Number"
                 value={roomNumber}
                 onChange={(e) => setRoomNumber(e.target.value)}
                 fullWidth
@@ -265,14 +265,14 @@ export default function StudentDirectoryPage() {
 
             <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
               <TextField
-                label="Parent name"
+                label="Parent Name"
                 value={parentName}
                 onChange={(e) => setParentName(e.target.value)}
                 fullWidth
                 required
               />
               <TextField
-                label="Parent email"
+                label="Parent Email"
                 type="email"
                 value={parentEmail}
                 onChange={(e) => setParentEmail(e.target.value)}

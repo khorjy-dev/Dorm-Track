@@ -268,7 +268,7 @@ function AuthRoot() {
                 variant={view === 'create' ? 'contained' : 'outlined'}
                 onClick={() => setViewAndPersist('create')}
               >
-                Log incident
+                Log Incident
               </Button>
             )}
             {has('incident:review') && (
@@ -277,7 +277,7 @@ function AuthRoot() {
                 variant={view === 'review' ? 'contained' : 'outlined'}
                 onClick={() => setViewAndPersist('review')}
               >
-                Review incidents
+                Review Incident
               </Button>
             )}
             {has('users:manage') && (
@@ -294,7 +294,7 @@ function AuthRoot() {
               </Button>
             )}
             <Button fullWidth variant="outlined" color="inherit" onClick={logout}>
-              Sign out
+              Sign Out
             </Button>
           </Box>
           <Menu anchorEl={manageAnchorEl} open={Boolean(manageAnchorEl)} onClose={() => setManageAnchorEl(null)}>

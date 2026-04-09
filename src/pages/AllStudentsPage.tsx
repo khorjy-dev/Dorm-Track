@@ -158,7 +158,7 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
         <TextField
-          label="Search students"
+          label="Search Students"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Name, student ID, room, grade, email..."
@@ -255,7 +255,7 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
               />
               <TextField
                 select
-                label="Grade level"
+                label="Grade Level"
                 value={editing.gradeLevel}
                 onChange={(e) =>
                   setEditing((prev) =>
@@ -273,42 +273,42 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
                 <MenuItem value="12">12</MenuItem>
               </TextField>
               <TextField
-                label="First name"
+                label="First Name"
                 value={editing.firstName}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, firstName: e.target.value } : prev))}
                 fullWidth
                 margin="dense"
               />
               <TextField
-                label="Last name"
+                label="Last Name"
                 value={editing.lastName}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, lastName: e.target.value } : prev))}
                 fullWidth
                 margin="dense"
               />
               <TextField
-                label="Student email"
+                label="Student Email"
                 value={editing.studentEmail}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, studentEmail: e.target.value } : prev))}
                 fullWidth
                 margin="dense"
               />
               <TextField
-                label="Room number"
+                label="Room Number"
                 value={editing.roomNumber}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, roomNumber: e.target.value } : prev))}
                 fullWidth
                 margin="dense"
               />
               <TextField
-                label="Parent name"
+                label="Parent Name"
                 value={editing.parentName}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, parentName: e.target.value } : prev))}
                 fullWidth
                 margin="dense"
               />
               <TextField
-                label="Parent email"
+                label="Parent Email"
                 value={editing.parentEmail}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, parentEmail: e.target.value } : prev))}
                 fullWidth

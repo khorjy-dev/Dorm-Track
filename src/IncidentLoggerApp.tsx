@@ -263,7 +263,7 @@ export default function IncidentLoggerApp(props: {
           <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="h6">Incident Track</Typography>
             <Typography variant="body2" color="text.secondary">
-              RA Incident Logging
+              Incident Logging
             </Typography>
           </Box>
 
@@ -341,7 +341,7 @@ function BasicsStep(props: {
           ))
         }
         renderInput={(params) => (
-          <TextField {...params} label="Students involved" placeholder="Search and select" required />
+          <TextField {...params} label="Students Involved" placeholder="Search and Select" required />
         )}
         sx={{ mb: 2 }}
       />
@@ -349,7 +349,7 @@ function BasicsStep(props: {
       <Box sx={{ display: 'grid', gap: 2, mb: 2 }}>
         <Box>
           <TextField
-            label="Date & time"
+            label="Date & Time"
             type="datetime-local"
             value={form.datetimeLocal}
             onChange={(e) => setForm((prev) => ({ ...prev, datetimeLocal: e.target.value }))}
@@ -380,7 +380,7 @@ function BasicsStep(props: {
       </Box>
 
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        Infraction type
+        Infraction Type
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {infractionTypes.map((t) => {
@@ -468,7 +468,7 @@ function DetailsStep(props: {
       </ToggleButtonGroup>
 
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        Actions taken
+        Actions Taken
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
         {actionsOptions.map((a) => {
@@ -489,7 +489,7 @@ function DetailsStep(props: {
 
       {needsOther && (
         <TextField
-          label="Other actions (details)"
+          label="Other Actions (Details)"
           value={form.actionsOther}
           onChange={(e) => setForm((prev) => ({ ...prev, actionsOther: e.target.value }))}
           fullWidth
@@ -521,7 +521,7 @@ function DetailsStep(props: {
       {form.sendEmailNotifications && (
         <Box sx={{ display: 'grid', gap: 1.25, mb: 1 }}>
           <TextField
-            label="Student email template"
+            label="Student Email Template"
             value={form.studentEmailTemplate}
             onChange={(e) => setForm((prev) => ({ ...prev, studentEmailTemplate: e.target.value }))}
             multiline
@@ -530,7 +530,7 @@ function DetailsStep(props: {
             helperText="Use placeholders: {{name}}, {{students}}, {{datetime}}, {{location}}, {{infractionType}}, {{severity}}, {{description}}, {{actions}}"
           />
           <TextField
-            label="Parent email template"
+            label="Parent Email Template"
             value={form.parentEmailTemplate}
             onChange={(e) => setForm((prev) => ({ ...prev, parentEmailTemplate: e.target.value }))}
             multiline
@@ -669,7 +669,7 @@ function MediaStep(props: {
                       <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {m.file.name}
                       </Typography>
-                      <IconButton size="small" onClick={() => removeMedia(m.id)} aria-label="Remove media">
+                      <IconButton size="small" onClick={() => removeMedia(m.id)} aria-label="Remove Media">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
@@ -717,15 +717,15 @@ function ReviewStep(props: {
         <SummaryRow label="Students" value={studentLabels.length ? studentLabels.join(', ') : 'None'} />
         <SummaryRow label="When" value={form.datetimeLocal || 'Not set'} />
         <SummaryRow label="Location" value={form.location || 'Not set'} />
-        <SummaryRow label="Infraction type" value={form.infractionType || 'Not set'} />
+        <SummaryRow label="Infraction Type" value={form.infractionType || 'Not set'} />
         <SummaryRow label="Severity" value={<Chip size="small" label={severityLabel} color="primary" />} />
         <SummaryRow
-          label="Actions taken"
+          label="Actions Taken"
           value={form.actionsTaken.length ? form.actionsTaken.join(', ') : 'None'}
         />
-        {form.actionsOther?.trim() && <SummaryRow label="Other actions" value={form.actionsOther} />}
+        {form.actionsOther?.trim() && <SummaryRow label="Other Actions" value={form.actionsOther} />}
         <SummaryRow label="Description" value={form.description?.trim() ? form.description : 'No description added'} />
-        <SummaryRow label="Email notifications" value={form.sendEmailNotifications ? 'Enabled' : 'Disabled'} />
+        <SummaryRow label="Email Notifications" value={form.sendEmailNotifications ? 'Enabled' : 'Disabled'} />
         <SummaryRow
           label="Media"
           value={form.media.length ? `${form.media.length} file(s) attached` : 'No media attached'}

@@ -154,7 +154,7 @@ export default function AdminUsersPage() {
   return (
     <Box sx={{ p: 2 }}>
       <Paper elevation={1} sx={{ p: 2 }}>
-        <Typography variant="h6">Manage users</Typography>
+        <Typography variant="h6">Manage Users</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Add an email and assign a role. Only admins can access this page.
         </Typography>
@@ -162,7 +162,7 @@ export default function AdminUsersPage() {
         <Stack component="form" direction={{ xs: 'column', sm: 'row' }} spacing={1.5} onSubmit={handleSubmit}>
           <TextField
             type="email"
-            label="Staff email"
+            label="Staff Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             fullWidth
@@ -177,12 +177,12 @@ export default function AdminUsersPage() {
               label="Role"
               onChange={(e) => setRole(e.target.value as StaffRole)}
             >
-              <MenuItem value="staff">staff</MenuItem>
-              <MenuItem value="admin">admin</MenuItem>
+              <MenuItem value="staff">Staff</MenuItem>
+              <MenuItem value="admin">Admin</MenuItem>
             </Select>
           </FormControl>
           <Button type="submit" variant="contained" disabled={busy}>
-            Save user
+            Save User
           </Button>
         </Stack>
 
@@ -200,7 +200,7 @@ export default function AdminUsersPage() {
 
       <Paper elevation={1} sx={{ p: 2, mt: 2 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-          <Typography variant="subtitle1">Allowlisted users</Typography>
+          <Typography variant="subtitle1">Allowlisted Users</Typography>
           <Button variant="outlined" onClick={() => void loadUsers()} disabled={busy}>
             Refresh
           </Button>
@@ -226,8 +226,8 @@ export default function AdminUsersPage() {
                         setRowRoleDraft((prev) => ({ ...prev, [row.email]: e.target.value as StaffRole }))
                       }
                     >
-                      <MenuItem value="staff">staff</MenuItem>
-                      <MenuItem value="admin">admin</MenuItem>
+                      <MenuItem value="staff">Staff</MenuItem>
+                      <MenuItem value="admin">Admin</MenuItem>
                     </Select>
                   </FormControl>
                 </TableCell>
@@ -239,7 +239,7 @@ export default function AdminUsersPage() {
                     disabled={busy || (rowRoleDraft[row.email] ?? row.role) === row.role}
                     onClick={() => void handleRoleSave(row.email)}
                   >
-                    Save role
+                    Save Role
                   </Button>
                   <Button
                     color="error"
@@ -267,7 +267,7 @@ export default function AdminUsersPage() {
       </Paper>
 
       <Dialog open={Boolean(removeEmail)} onClose={() => setRemoveEmail(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Remove user?</DialogTitle>
+        <DialogTitle>Remove User?</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
             {removeEmail ? `This will remove ${removeEmail} from the allowlist.` : 'Remove this user?'}

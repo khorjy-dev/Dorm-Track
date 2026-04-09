@@ -184,7 +184,7 @@ export default function StaffReviewPage(props: {
           }}
         >
           <TextField
-            label="Date from"
+            label="Date From"
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
@@ -192,7 +192,7 @@ export default function StaffReviewPage(props: {
           />
 
           <TextField
-            label="Date to"
+            label="Date To"
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
@@ -302,7 +302,7 @@ export default function StaffReviewPage(props: {
                               </Typography>
                               {inc.recordedByEmail.trim() ? (
                                 <Typography variant="body2">
-                                  <b>Recorded by:</b> {inc.recordedByEmail}
+                                  <b>Recorded By:</b> {inc.recordedByEmail}
                                 </Typography>
                               ) : null}
                               <Typography variant="body2">
@@ -315,7 +315,7 @@ export default function StaffReviewPage(props: {
                                 <b>Actions:</b> {inc.actionsTaken.join(', ') || 'None'}
                               </Typography>
                               <Typography variant="body2">
-                                <b>Email status:</b>{' '}
+                                <b>Email Status:</b>{' '}
                                 {inc.sendEmailNotifications
                                   ? inc.emailStatus === 'sent'
                                     ? `Sent (${inc.emailQueuedCount})`
@@ -368,7 +368,7 @@ export default function StaffReviewPage(props: {
       </Paper>
 
       <Dialog open={Boolean(editingIncident && draft)} onClose={closeEdit} fullWidth maxWidth="sm">
-        <DialogTitle>Edit incident</DialogTitle>
+        <DialogTitle>Edit Incident</DialogTitle>
         <DialogContent>
           {draft && (
             <Box sx={{ display: 'grid', gap: 1.5, mt: 0.5 }}>
@@ -387,7 +387,7 @@ export default function StaffReviewPage(props: {
                 fullWidth
               />
               <TextField
-                label="Infraction type"
+                label="Infraction Type"
                 value={draft.infractionType}
                 onChange={(e) => setDraft((prev) => (prev ? { ...prev, infractionType: e.target.value } : prev))}
                 fullWidth
@@ -406,7 +406,7 @@ export default function StaffReviewPage(props: {
                 <MenuItem value="high">High</MenuItem>
               </TextField>
               <TextField
-                label="Students (comma-separated)"
+                label="Students (Comma-Separated)"
                 value={draft.studentsCsv}
                 onChange={(e) => setDraft((prev) => (prev ? { ...prev, studentsCsv: e.target.value } : prev))}
                 fullWidth
@@ -431,7 +431,7 @@ export default function StaffReviewPage(props: {
       </Dialog>
 
       <Dialog open={Boolean(detailsIncident)} onClose={closeDetails} fullWidth maxWidth="md">
-        <DialogTitle>Incident details</DialogTitle>
+        <DialogTitle>Incident Details</DialogTitle>
         <DialogContent dividers>
           {!detailsIncident ? null : (
             <Box sx={{ display: 'grid', gap: 1.5 }}>
@@ -456,10 +456,10 @@ export default function StaffReviewPage(props: {
                 <b>ID:</b> {detailsIncident.id}
               </Typography>
               <Typography variant="body2">
-                <b>Submitted by:</b> {detailsIncident.recordedByEmail.trim() || 'Unknown'}
+                <b>Submitted By:</b> {detailsIncident.recordedByEmail.trim() || 'Unknown'}
               </Typography>
               <Typography variant="body2">
-                <b>Submitted at:</b> {detailsIncident.submittedAt}
+                <b>Submitted At:</b> {detailsIncident.submittedAt}
               </Typography>
               <Typography variant="body2">
                 <b>When:</b> {detailsIncident.datetimeLocal}
@@ -476,7 +476,7 @@ export default function StaffReviewPage(props: {
               </Typography>
               {detailsIncident.actionsOther?.trim() ? (
                 <Typography variant="body2">
-                  <b>Other actions:</b> {detailsIncident.actionsOther}
+                  <b>Other Actions:</b> {detailsIncident.actionsOther}
                 </Typography>
               ) : null}
 
@@ -490,11 +490,11 @@ export default function StaffReviewPage(props: {
               <Divider />
 
               <Typography variant="body2">
-                <b>Email notifications:</b> {detailsIncident.sendEmailNotifications ? 'Enabled' : 'Disabled'}
+                <b>Email Notifications:</b> {detailsIncident.sendEmailNotifications ? 'Enabled' : 'Disabled'}
               </Typography>
               {detailsIncident.sendEmailNotifications ? (
                 <Typography variant="body2">
-                  <b>Email status:</b>{' '}
+                  <b>Email Status:</b>{' '}
                   {detailsIncident.emailStatus === 'sent'
                     ? `Sent (${detailsIncident.emailQueuedCount})`
                     : detailsIncident.emailStatus === 'queued'
@@ -510,14 +510,14 @@ export default function StaffReviewPage(props: {
               {detailsIncident.sendEmailNotifications ? (
                 <>
                   <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    <b>Student email template:</b>
+                    <b>Student Email Template:</b>
                   </Typography>
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                     {detailsIncident.studentEmailTemplate}
                   </Typography>
 
                   <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    <b>Parent email template:</b>
+                    <b>Parent Email Template:</b>
                   </Typography>
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                     {detailsIncident.parentEmailTemplate}
@@ -600,7 +600,7 @@ export default function StaffReviewPage(props: {
       </Dialog>
 
       <Dialog open={Boolean(deleteConfirmIncidentId)} onClose={closeDeleteConfirm} maxWidth="xs" fullWidth>
-        <DialogTitle>Delete record?</DialogTitle>
+        <DialogTitle>Delete Record?</DialogTitle>
         <DialogContent>
           <Typography variant="body2">Do you want to delete record?</Typography>
         </DialogContent>

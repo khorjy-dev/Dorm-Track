@@ -44,7 +44,7 @@ export default function LocationsPage(props: {
     <Container maxWidth="md" sx={{ py: 2 }}>
       <Paper elevation={1} sx={{ p: 2.5 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>
-          Incident locations
+          Incident Locations
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Add or edit location options used when logging incidents.
@@ -53,7 +53,7 @@ export default function LocationsPage(props: {
         <Card variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <TextField
-              label="New location"
+              label="New Location"
               value={newLocation}
               onChange={(e) => setNewLocation(e.target.value)}
               fullWidth
@@ -77,7 +77,7 @@ export default function LocationsPage(props: {
                   />
                 }
               />
-              <IconButton color="error" onClick={() => deleteLocation(idx)} aria-label="Delete location">
+              <IconButton color="error" onClick={() => deleteLocation(idx)} aria-label="Delete Location">
                 <DeleteIcon />
               </IconButton>
             </ListItem>
