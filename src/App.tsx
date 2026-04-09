@@ -202,7 +202,7 @@ function AuthRoot() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f6f7fb' }}>
       <Paper elevation={1} sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6">Incident Track</Typography>
             <Typography variant="body2" color="text.secondary">
@@ -210,19 +210,43 @@ function AuthRoot() {
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: 'repeat(2, minmax(140px, 1fr))',
+                md: 'repeat(4, minmax(140px, 1fr))',
+                lg: 'repeat(6, minmax(140px, 1fr))',
+              },
+              gap: 1,
+              width: { xs: '100%', sm: 'auto' },
+              minWidth: { sm: 520 },
+              '& .MuiButton-root': {
+                whiteSpace: 'nowrap',
+              },
+            }}
+          >
             {has('incident:create') && (
-              <Button variant={view === 'create' ? 'contained' : 'outlined'} onClick={() => setViewAndPersist('create')}>
+              <Button
+                fullWidth
+                variant={view === 'create' ? 'contained' : 'outlined'}
+                onClick={() => setViewAndPersist('create')}
+              >
                 Log incident
               </Button>
             )}
             {has('incident:review') && (
-              <Button variant={view === 'review' ? 'contained' : 'outlined'} onClick={() => setViewAndPersist('review')}>
+              <Button
+                fullWidth
+                variant={view === 'review' ? 'contained' : 'outlined'}
+                onClick={() => setViewAndPersist('review')}
+              >
                 Review incidents
               </Button>
             )}
             {has('staff:manage') && (
               <Button
+                fullWidth
                 variant={view === 'infractions' ? 'contained' : 'outlined'}
                 onClick={() => setViewAndPersist('infractions')}
               >
@@ -231,6 +255,7 @@ function AuthRoot() {
             )}
             {has('staff:manage') && (
               <Button
+                fullWidth
                 variant={view === 'allStudents' ? 'contained' : 'outlined'}
                 onClick={() => setViewAndPersist('allStudents')}
               >
@@ -238,19 +263,27 @@ function AuthRoot() {
               </Button>
             )}
             {has('staff:manage') && (
-              <Button variant={view === 'students' ? 'contained' : 'outlined'} onClick={() => setViewAndPersist('students')}>
+              <Button
+                fullWidth
+                variant={view === 'students' ? 'contained' : 'outlined'}
+                onClick={() => setViewAndPersist('students')}
+              >
                 Manage students
               </Button>
             )}
             {has('users:manage') && (
-              <Button variant={view === 'users' ? 'contained' : 'outlined'} onClick={() => setViewAndPersist('users')}>
+              <Button
+                fullWidth
+                variant={view === 'users' ? 'contained' : 'outlined'}
+                onClick={() => setViewAndPersist('users')}
+              >
                 Manage users
               </Button>
             )}
-            <Button variant="text" color="inherit" onClick={logout}>
+            <Button fullWidth variant="outlined" color="inherit" onClick={logout}>
               Sign out
             </Button>
-          </Stack>
+          </Box>
         </Stack>
       </Paper>
 
