@@ -304,7 +304,7 @@ function AuthRoot() {
                 setManageAnchorEl(null);
               }}
             >
-              Manage users
+              Manage Users
             </MenuItem>
             <MenuItem
               onClick={() => {
@@ -312,15 +312,7 @@ function AuthRoot() {
                 setManageAnchorEl(null);
               }}
             >
-              Manage students
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setViewAndPersist('allStudents');
-                setManageAnchorEl(null);
-              }}
-            >
-              Student list
+              Manage Students
             </MenuItem>
             <MenuItem
               onClick={() => {
@@ -328,7 +320,7 @@ function AuthRoot() {
                 setManageAnchorEl(null);
               }}
             >
-              Manage infraction types
+              Manage Infraction Types
             </MenuItem>
             <MenuItem
               onClick={() => {
@@ -336,7 +328,15 @@ function AuthRoot() {
                 setManageAnchorEl(null);
               }}
             >
-              Manage locations
+              Manage Locations
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setViewAndPersist('allStudents');
+                setManageAnchorEl(null);
+              }}
+            >
+              Student List
             </MenuItem>
           </Menu>
         </Stack>
