@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (role === null) {
         setNotAuthorizedMessage(
-          `This email is not authorized to use DormTrack: ${supaUser.email}. Your school email must be added to the staff allowlist in the database. Ask an administrator.`,
+          `This email is not authorized to use Incident Track: ${supaUser.email}. Your school email must be added to the staff allowlist in the database. Ask an administrator.`,
         );
         setUser(null);
         try {

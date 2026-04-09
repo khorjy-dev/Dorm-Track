@@ -255,7 +255,7 @@ export default function IncidentLoggerApp(props: {
       <Container maxWidth="sm" sx={{ py: 3 }}>
         <Paper elevation={1} sx={{ p: 2.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="h6">DormTrack</Typography>
+            <Typography variant="h6">Incident Track</Typography>
             <Typography variant="body2" color="text.secondary">
               RA Incident Logging
             </Typography>

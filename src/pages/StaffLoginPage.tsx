@@ -79,7 +79,7 @@ export default function StaffLoginPage() {
       <Container maxWidth="sm" sx={{ py: 3 }}>
         <Paper elevation={1} sx={{ p: 2.5 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>
-            DormTrack
+            Incident Track
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Sign in with your school Google account to access staff features.

@@ -204,7 +204,7 @@ function AuthRoot() {
       <Paper elevation={1} sx={{ p: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }}>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h6">DormTrack</Typography>
+            <Typography variant="h6">Incident Track</Typography>
             <Typography variant="body2" color="text.secondary">
               Signed in as <b>{user.email}</b> ({user.role})
             </Typography>

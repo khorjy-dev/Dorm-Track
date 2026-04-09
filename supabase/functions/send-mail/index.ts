@@ -3,7 +3,7 @@
  *
  * Setup:
  * 1. supabase secrets set --project-ref <ref> RESEND_API_KEY=re_xxx
- * 2. supabase secrets set --project-ref <ref> RESEND_FROM="DormTrack <onboarding@resend.dev>"
+ * 2. supabase secrets set --project-ref <ref> RESEND_FROM="Incident Track <onboarding@resend.dev>"
  *    (use a domain you verify in Resend for production)
  * 3. Optional: supabase secrets set --project-ref <ref> WEBHOOK_SECRET=long-random-string
  * 4. Deploy: supabase functions deploy send-mail --project-ref <ref>
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   }
 
   const resendKey = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("RESEND_FROM") ?? "DormTrack <onboarding@resend.dev>";
+  const from = Deno.env.get("RESEND_FROM") ?? "Incident Track <onboarding@resend.dev>";
   if (!resendKey) {
     return jsonResponse({ error: "RESEND_API_KEY not configured" }, 500);
   }
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    const subject = row.message?.subject ?? "DormTrack notification";
+    const subject = row.message?.subject ?? "Incident Track notification";
     const text = row.message?.text ?? "";
 
     const res = await fetch("https://api.resend.com/emails", {
