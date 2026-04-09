@@ -222,7 +222,13 @@ function AuthRoot() {
               width: { xs: '100%', sm: 'auto' },
               minWidth: { sm: 520 },
               '& .MuiButton-root': {
-                whiteSpace: 'nowrap',
+                whiteSpace: 'normal',
+                textAlign: 'center',
+                textTransform: 'none',
+                lineHeight: 1.15,
+                fontSize: { xs: '0.75rem', sm: '0.78rem', md: '0.82rem' },
+                px: 1.1,
+                py: 0.9,
               },
             }}
           >
