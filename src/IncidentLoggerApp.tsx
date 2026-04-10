@@ -7,6 +7,7 @@ import {
   CardContent,
   CardMedia,
   Chip,
+  Collapse,
   Container,
   IconButton,
   MenuItem,
@@ -562,8 +563,8 @@ function DetailsStep(props: {
         </Button>
       </Box>
 
-      {form.sendEmailNotifications && (
-        <Box sx={{ display: 'grid', gap: 1.25, mb: 1 }}>
+      <Collapse in={form.sendEmailNotifications} timeout="auto" unmountOnExit>
+        <Box sx={{ display: 'grid', gap: 1.25, mb: 1, pt: 0.25 }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
             {`Use placeholders: {{name}}, {{students}}, {{datetime}}, {{location}}, {{infractionType}}, {{severity}}, {{description}}, {{actions}}`}
           </Typography>
@@ -617,7 +618,7 @@ function DetailsStep(props: {
             helperText="Use the same placeholders as above."
           />
         </Box>
-      )}
+      </Collapse>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
         <Button variant="outlined" onClick={onBack} sx={{ px: 3 }}>
