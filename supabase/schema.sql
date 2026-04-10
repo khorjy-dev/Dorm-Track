@@ -60,6 +60,8 @@ create table if not exists public.incidents (
   actions_other text not null default '',
   media jsonb not null default '[]'::jsonb,
   send_email_notifications boolean not null default true,
+  student_notification_emails text not null default '',
+  parent_notification_emails text not null default '',
   student_email_template text not null default '',
   parent_email_template text not null default '',
   email_status text not null default 'not_requested' check (email_status in ('not_requested','queued','queue_failed','sent')),

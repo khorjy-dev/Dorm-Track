@@ -366,6 +366,7 @@ function AuthRoot() {
           <IncidentLoggerApp
             onIncidentSubmitted={handleIncidentSubmitted}
             studentOptions={studentOptions}
+            studentRecords={students}
             infractionTypes={infractionTypes}
             locationOptions={locations}
           />

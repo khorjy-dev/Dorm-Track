@@ -510,6 +510,18 @@ export default function StaffReviewPage(props: {
               {detailsIncident.sendEmailNotifications ? (
                 <>
                   <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <b>Student notification recipients:</b>
+                  </Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {detailsIncident.studentNotificationEmails?.trim() || '—'}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <b>Parent notification recipients:</b>
+                  </Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {detailsIncident.parentNotificationEmails?.trim() || '—'}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
                     <b>Student Email Template:</b>
                   </Typography>
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>

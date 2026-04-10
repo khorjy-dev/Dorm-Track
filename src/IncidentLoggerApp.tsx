@@ -23,7 +23,11 @@ import Autocomplete from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
 import { resolveStudentLabel, STUDENT_OPTIONS } from './data/students';
-import type { StudentOption } from './types/student';
+import {
+  defaultParentNotificationEmails,
+  defaultStudentNotificationEmails,
+} from './data/incidentEmailQueue';
+import type { StudentOption, StudentRecord } from './types/student';
 
 export type Severity = 'low' | 'medium' | 'high';
 
@@ -59,6 +63,8 @@ export type SubmittedIncident = {
   actionsOther: string;
   media: IncidentMediaMeta[];
   sendEmailNotifications: boolean;
+  studentNotificationEmails: string;
+  parentNotificationEmails: string;
   studentEmailTemplate: string;
   parentEmailTemplate: string;
   emailStatus: 'not_requested' | 'queued' | 'queue_failed' | 'sent';
@@ -79,6 +85,8 @@ type IncidentFormState = {
   actionsOther: string;
   media: MediaItem[];
   sendEmailNotifications: boolean;
+  studentNotificationEmails: string;
+  parentNotificationEmails: string;
   studentEmailTemplate: string;
   parentEmailTemplate: string;
 };
@@ -128,18 +136,29 @@ const DEFAULT_PARENT_EMAIL_TEMPLATE =
 export default function IncidentLoggerApp(props: {
   onIncidentSubmitted?: (incident: SubmittedIncident) => Promise<void> | void;
   studentOptions?: StudentOption[];
+  /** Directory rows for selected students — used to pre-fill notification recipient fields. */
+  studentRecords?: StudentRecord[];
   infractionTypes?: string[];
   locationOptions?: string[];
 }) {
   const {
     onIncidentSubmitted,
     studentOptions = STUDENT_OPTIONS,
+    studentRecords = [],
     infractionTypes = ['Other'],
     locationOptions: locationOptionsProp = locationOptions as unknown as string[],
   } = props;
   const studentLabelById = React.useMemo(() => {
     return new Map(studentOptions.map((s) => [s.id, s.label]));
   }, [studentOptions]);
+
+  const studentsById = React.useMemo(
+    () => new Map(studentRecords.map((s) => [s.id, s] as const)),
+    [studentRecords],
+  );
+  const studentsByIdRef = React.useRef(studentsById);
+  studentsByIdRef.current = studentsById;
+  const notificationRecipientsSyncedForKey = React.useRef<string>('');
 
   const [activeStep, setActiveStep] = React.useState(0);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -156,6 +175,8 @@ export default function IncidentLoggerApp(props: {
     actionsOther: '',
     media: [],
     sendEmailNotifications: false,
+    studentNotificationEmails: '',
+    parentNotificationEmails: '',
     studentEmailTemplate: DEFAULT_STUDENT_EMAIL_TEMPLATE,
     parentEmailTemplate: DEFAULT_PARENT_EMAIL_TEMPLATE,
   });
@@ -169,6 +190,20 @@ export default function IncidentLoggerApp(props: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const selectedStudentsKey = [...form.students].sort().join(',');
+  React.useEffect(() => {
+    if (activeStep !== 1) return;
+    if (selectedStudentsKey === notificationRecipientsSyncedForKey.current) return;
+    notificationRecipientsSyncedForKey.current = selectedStudentsKey;
+    const map = studentsByIdRef.current;
+    const involved = form.students.map((id) => map.get(id)).filter((s): s is StudentRecord => Boolean(s));
+    setForm((prev) => ({
+      ...prev,
+      studentNotificationEmails: defaultStudentNotificationEmails(involved),
+      parentNotificationEmails: defaultParentNotificationEmails(involved),
+    }));
+  }, [activeStep, selectedStudentsKey]);
 
   const canProceedBasics =
     form.students.length > 0 &&
@@ -213,6 +248,8 @@ export default function IncidentLoggerApp(props: {
         actionsOther: form.actionsOther,
         media: mediaWithData,
         sendEmailNotifications: form.sendEmailNotifications,
+        studentNotificationEmails: form.studentNotificationEmails,
+        parentNotificationEmails: form.parentNotificationEmails,
         studentEmailTemplate: form.studentEmailTemplate,
         parentEmailTemplate: form.parentEmailTemplate,
         emailStatus: form.sendEmailNotifications ? 'not_requested' : 'not_requested',
@@ -233,6 +270,7 @@ export default function IncidentLoggerApp(props: {
       // Clean up local object URLs (we also store permanent data URLs now).
       mediaToRevoke.forEach((m) => URL.revokeObjectURL(m.previewUrl));
 
+      notificationRecipientsSyncedForKey.current = '';
       setActiveStep(0);
       setForm({
         students: [],
@@ -245,6 +283,8 @@ export default function IncidentLoggerApp(props: {
         actionsOther: '',
         media: [],
         sendEmailNotifications: false,
+        studentNotificationEmails: '',
+        parentNotificationEmails: '',
         studentEmailTemplate: DEFAULT_STUDENT_EMAIL_TEMPLATE,
         parentEmailTemplate: DEFAULT_PARENT_EMAIL_TEMPLATE,
       });
@@ -501,6 +541,42 @@ function DetailsStep(props: {
       <Typography variant="subtitle2" sx={{ mb: 1.25, mt: 0.5 }}>
         Notifications
       </Typography>
+
+      <Typography variant="subtitle2" sx={{ mb: 0.75, color: 'text.primary' }}>
+        Notification recipients
+      </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
+        Pulled from the student directory for the students you selected (Details opens or students change). Edit
+        anytime. Separate multiple addresses with commas.
+      </Typography>
+      <Box sx={{ display: 'grid', gap: 1.5, mb: 2.5 }}>
+        <TextField
+          label="Student notification recipients"
+          value={form.studentNotificationEmails}
+          onChange={(e) => setForm((prev) => ({ ...prev, studentNotificationEmails: e.target.value }))}
+          fullWidth
+          placeholder="student1@school.org, student2@school.org"
+          helperText="Student template is sent to each address listed here."
+          multiline
+          minRows={2}
+          variant="outlined"
+        />
+        <TextField
+          label="Parent notification recipients"
+          value={form.parentNotificationEmails}
+          onChange={(e) => setForm((prev) => ({ ...prev, parentNotificationEmails: e.target.value }))}
+          fullWidth
+          placeholder="parent1@email.com"
+          helperText="Parent template is sent to each address listed here."
+          multiline
+          minRows={2}
+          variant="outlined"
+        />
+      </Box>
+
+      <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+        Email templates and sending
+      </Typography>
       <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
         <Button
           variant={form.sendEmailNotifications ? 'contained' : 'outlined'}
@@ -726,6 +802,18 @@ function ReviewStep(props: {
         {form.actionsOther?.trim() && <SummaryRow label="Other Actions" value={form.actionsOther} />}
         <SummaryRow label="Description" value={form.description?.trim() ? form.description : 'No description added'} />
         <SummaryRow label="Email Notifications" value={form.sendEmailNotifications ? 'Enabled' : 'Disabled'} />
+        {form.sendEmailNotifications ? (
+          <>
+            <SummaryRow
+              label="Student recipients"
+              value={form.studentNotificationEmails.trim() || '(none — no student emails will be sent)'}
+            />
+            <SummaryRow
+              label="Parent recipients"
+              value={form.parentNotificationEmails.trim() || '(none — no parent emails will be sent)'}
+            />
+          </>
+        ) : null}
         <SummaryRow
           label="Media"
           value={form.media.length ? `${form.media.length} file(s) attached` : 'No media attached'}
