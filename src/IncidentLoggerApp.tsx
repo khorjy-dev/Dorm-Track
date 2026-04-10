@@ -23,6 +23,7 @@ import {
 import Autocomplete from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
+import { DEFAULT_ACTIONS_TAKEN } from './data/actionsTaken';
 import { resolveStudentLabel, STUDENT_OPTIONS } from './data/students';
 import {
   defaultParentNotificationEmails,
@@ -96,14 +97,6 @@ const locationOptions = ['3rd Floor Hallway', 'Common Room', 'Outside Entrance',
 
 const severityOptions: Severity[] = ['low', 'medium', 'high'];
 
-const actionsOptions = [
-  'Warning given',
-  'Parents notified',
-  'Security notified',
-  'Confiscated item',
-  'Other',
-] as const;
-
 function toLocalDatetimeInput(d: Date) {
   // Creates "YYYY-MM-DDTHH:mm" in local time for datetime-local.
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -141,6 +134,8 @@ export default function IncidentLoggerApp(props: {
   studentRecords?: StudentRecord[];
   infractionTypes?: string[];
   locationOptions?: string[];
+  /** Action chips on the Details step (from admin-managed list). */
+  actionsTakenOptions?: string[];
 }) {
   const {
     onIncidentSubmitted,
@@ -148,7 +143,10 @@ export default function IncidentLoggerApp(props: {
     studentRecords = [],
     infractionTypes = ['Other'],
     locationOptions: locationOptionsProp = locationOptions as unknown as string[],
+    actionsTakenOptions: actionsTakenOptionsProp = DEFAULT_ACTIONS_TAKEN,
   } = props;
+  const actionsTakenOptions = actionsTakenOptionsProp.filter(Boolean);
+  const actionsTakenOptionsKey = actionsTakenOptions.join('\0');
   const studentLabelById = React.useMemo(() => {
     return new Map(studentOptions.map((s) => [s.id, s.label]));
   }, [studentOptions]);
@@ -205,6 +203,21 @@ export default function IncidentLoggerApp(props: {
       parentNotificationEmails: defaultParentNotificationEmails(involved),
     }));
   }, [activeStep, selectedStudentsKey]);
+
+  React.useEffect(() => {
+    setForm((prev) => {
+      const filtered = prev.actionsTaken.filter((a) => actionsTakenOptions.includes(a));
+      const stillOther = filtered.includes('Other');
+      if (filtered.length === prev.actionsTaken.length && stillOther === prev.actionsTaken.includes('Other')) {
+        return prev;
+      }
+      return {
+        ...prev,
+        actionsTaken: filtered,
+        actionsOther: stillOther ? prev.actionsOther : '',
+      };
+    });
+  }, [actionsTakenOptionsKey]);
 
   const canProceedBasics =
     form.students.length > 0 &&
@@ -328,7 +341,15 @@ export default function IncidentLoggerApp(props: {
             />
           )}
 
-          {activeStep === 1 && <DetailsStep form={form} setForm={setForm} onBack={handleBack} onNext={handleNext} />}
+          {activeStep === 1 && (
+            <DetailsStep
+              form={form}
+              setForm={setForm}
+              onBack={handleBack}
+              onNext={handleNext}
+              actionsTakenOptions={actionsTakenOptions}
+            />
+          )}
 
           {activeStep === 2 && <MediaStep form={form} setForm={setForm} onBack={handleBack} onNext={handleNext} />}
 
@@ -454,8 +475,9 @@ function DetailsStep(props: {
   setForm: React.Dispatch<React.SetStateAction<IncidentFormState>>;
   onBack: () => void;
   onNext: () => void;
+  actionsTakenOptions: string[];
 }) {
-  const { form, setForm, onBack, onNext } = props;
+  const { form, setForm, onBack, onNext, actionsTakenOptions } = props;
 
   const toggleAction = (value: string) => {
     setForm((prev) => {
@@ -512,7 +534,7 @@ function DetailsStep(props: {
         Actions Taken
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-        {actionsOptions.map((a) => {
+        {actionsTakenOptions.map((a) => {
           const active = form.actionsTaken.includes(a);
           return (
             <Button

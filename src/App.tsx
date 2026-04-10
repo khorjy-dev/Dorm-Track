@@ -20,6 +20,7 @@ import AllStudentsPage from './pages/AllStudentsPage';
 import InfractionTypesPage from './pages/InfractionTypesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import LocationsPage from './pages/LocationsPage';
+import ActionsTakenPage from './pages/ActionsTakenPage';
 import { subscribeStudents } from './data/studentDirectory';
 import { resolveStudentLabel, STUDENT_OPTIONS } from './data/students';
 import { toStudentOption, type StudentRecord } from './types/student';
@@ -29,6 +30,8 @@ import { createIncident, deleteIncident, subscribeIncidents, updateIncident } fr
 import { replaceInfractionTypes, subscribeInfractionTypes } from './data/infractionTypesStore';
 import { DEFAULT_LOCATIONS } from './data/locations';
 import { replaceLocations, subscribeLocations } from './data/locationsStore';
+import { DEFAULT_ACTIONS_TAKEN } from './data/actionsTaken';
+import { replaceActionsTaken, subscribeActionsTaken } from './data/actionsTakenStore';
 
 function displayError(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'message' in err) {
@@ -39,7 +42,15 @@ function displayError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-type View = 'create' | 'review' | 'students' | 'allStudents' | 'infractions' | 'users' | 'locations';
+type View =
+  | 'create'
+  | 'review'
+  | 'students'
+  | 'allStudents'
+  | 'infractions'
+  | 'users'
+  | 'locations'
+  | 'actionsTaken';
 const VIEW_STORAGE_KEY = 'dormtrack:view';
 
 function isView(value: unknown): value is View {
@@ -50,7 +61,8 @@ function isView(value: unknown): value is View {
     value === 'allStudents' ||
     value === 'infractions' ||
     value === 'users' ||
-    value === 'locations'
+    value === 'locations' ||
+    value === 'actionsTaken'
   );
 }
 
@@ -60,6 +72,7 @@ function AuthRoot() {
   const [students, setStudents] = React.useState<StudentRecord[]>([]);
   const [infractionTypes, setInfractionTypes] = React.useState<string[]>(DEFAULT_INFRACTION_TYPES);
   const [locations, setLocations] = React.useState<string[]>(DEFAULT_LOCATIONS);
+  const [actionsTakenOptions, setActionsTakenOptions] = React.useState<string[]>(DEFAULT_ACTIONS_TAKEN);
   const [studentLoadError, setStudentLoadError] = React.useState<string | null>(null);
   const [incidentsLoadError, setIncidentsLoadError] = React.useState<string | null>(null);
   const [emailNotice, setEmailNotice] = React.useState<string | null>(null);
@@ -115,6 +128,17 @@ function AuthRoot() {
 
   React.useEffect(() => {
     if (!user) return;
+    const unsub = subscribeActionsTaken(
+      (actions) => setActionsTakenOptions(actions),
+      () => {
+        // keep defaults when unavailable
+      },
+    );
+    return () => unsub();
+  }, [user]);
+
+  React.useEffect(() => {
+    if (!user) return;
     const unsub = subscribeIncidents(
       (rows) => {
         setIncidents(rows);
@@ -134,7 +158,11 @@ function AuthRoot() {
     const canUseCurrent =
       (view === 'create' && has('incident:create')) ||
       (view === 'review' && has('incident:review')) ||
-      ((view === 'students' || view === 'allStudents' || view === 'infractions' || view === 'locations') &&
+      ((view === 'students' ||
+        view === 'allStudents' ||
+        view === 'infractions' ||
+        view === 'locations' ||
+        view === 'actionsTaken') &&
         has('users:manage')) ||
       (view === 'users' && has('users:manage'));
     if (canUseCurrent) return;
@@ -284,7 +312,12 @@ function AuthRoot() {
               <Button
                 fullWidth
                 variant={
-                  view === 'infractions' || view === 'allStudents' || view === 'students' || view === 'users' || view === 'locations'
+                  view === 'infractions' ||
+                  view === 'allStudents' ||
+                  view === 'students' ||
+                  view === 'users' ||
+                  view === 'locations' ||
+                  view === 'actionsTaken'
                     ? 'contained'
                     : 'outlined'
                 }
@@ -332,6 +365,14 @@ function AuthRoot() {
             </MenuItem>
             <MenuItem
               onClick={() => {
+                setViewAndPersist('actionsTaken');
+                setManageAnchorEl(null);
+              }}
+            >
+              Manage Actions Taken
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
                 setViewAndPersist('allStudents');
                 setManageAnchorEl(null);
               }}
@@ -369,6 +410,7 @@ function AuthRoot() {
             studentRecords={students}
             infractionTypes={infractionTypes}
             locationOptions={locations}
+            actionsTakenOptions={actionsTakenOptions}
           />
         )}
 
@@ -402,6 +444,19 @@ function AuthRoot() {
               void replaceLocations(next).catch((err) => {
                 const msg = err && typeof err === 'object' && 'message' in err ? String((err as any).message) : 'Failed to save locations.';
                 setEmailNotice(`Locations save error: ${msg}`);
+              });
+            }}
+          />
+        )}
+        {view === 'actionsTaken' && has('users:manage') && (
+          <ActionsTakenPage
+            actionsTaken={actionsTakenOptions}
+            onChange={(next) => {
+              setActionsTakenOptions(next);
+              void replaceActionsTaken(next).catch((err) => {
+                const msg =
+                  err && typeof err === 'object' && 'message' in err ? String((err as any).message) : 'Failed to save actions taken.';
+                setEmailNotice(`Actions taken save error: ${msg}`);
               });
             }}
           />
