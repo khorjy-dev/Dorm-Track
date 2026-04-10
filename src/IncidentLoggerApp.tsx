@@ -542,38 +542,6 @@ function DetailsStep(props: {
         Notifications
       </Typography>
 
-      <Typography variant="subtitle2" sx={{ mb: 0.75, color: 'text.primary' }}>
-        Notification recipients
-      </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
-        Pulled from the student directory for the students you selected (Details opens or students change). Edit
-        anytime. Separate multiple addresses with commas.
-      </Typography>
-      <Box sx={{ display: 'grid', gap: 1.5, mb: 2.5 }}>
-        <TextField
-          label="Student notification recipients"
-          value={form.studentNotificationEmails}
-          onChange={(e) => setForm((prev) => ({ ...prev, studentNotificationEmails: e.target.value }))}
-          fullWidth
-          placeholder="student1@school.org, student2@school.org"
-          helperText="Student template is sent to each address listed here."
-          multiline
-          minRows={2}
-          variant="outlined"
-        />
-        <TextField
-          label="Parent notification recipients"
-          value={form.parentNotificationEmails}
-          onChange={(e) => setForm((prev) => ({ ...prev, parentNotificationEmails: e.target.value }))}
-          fullWidth
-          placeholder="parent1@email.com"
-          helperText="Parent template is sent to each address listed here."
-          multiline
-          minRows={2}
-          variant="outlined"
-        />
-      </Box>
-
       <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
         Email templates and sending
       </Typography>
@@ -596,6 +564,41 @@ function DetailsStep(props: {
 
       {form.sendEmailNotifications && (
         <Box sx={{ display: 'grid', gap: 1.25, mb: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            {`Use placeholders: {{name}}, {{students}}, {{datetime}}, {{location}}, {{infractionType}}, {{severity}}, {{description}}, {{actions}}`}
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
+            Notification recipients
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -0.5 }}>
+            Pulled from the student directory for the students you selected (when you open this step or change
+            students). Edit anytime. Separate multiple addresses with commas.
+          </Typography>
+          <TextField
+            label="Student notification recipients"
+            value={form.studentNotificationEmails}
+            onChange={(e) => setForm((prev) => ({ ...prev, studentNotificationEmails: e.target.value }))}
+            fullWidth
+            placeholder="student1@school.org, student2@school.org"
+            helperText="Student template is sent to each address listed here."
+            multiline
+            minRows={2}
+            variant="outlined"
+          />
+          <TextField
+            label="Parent notification recipients"
+            value={form.parentNotificationEmails}
+            onChange={(e) => setForm((prev) => ({ ...prev, parentNotificationEmails: e.target.value }))}
+            fullWidth
+            placeholder="parent1@email.com"
+            helperText="Parent template is sent to each address listed here."
+            multiline
+            minRows={2}
+            variant="outlined"
+          />
+          <Typography variant="subtitle2" sx={{ mt: 0.5 }}>
+            Email templates
+          </Typography>
           <TextField
             label="Student Email Template"
             value={form.studentEmailTemplate}
@@ -603,7 +606,6 @@ function DetailsStep(props: {
             multiline
             minRows={3}
             fullWidth
-            helperText="Use placeholders: {{name}}, {{students}}, {{datetime}}, {{location}}, {{infractionType}}, {{severity}}, {{description}}, {{actions}}"
           />
           <TextField
             label="Parent Email Template"
