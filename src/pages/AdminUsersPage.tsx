@@ -16,6 +16,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -199,60 +200,101 @@ export default function AdminUsersPage() {
       </Paper>
 
       <Paper elevation={1} sx={{ p: 2, mt: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          spacing={1}
+          sx={{ mb: 1 }}
+        >
           <Typography variant="subtitle1">Allowlisted Users</Typography>
-          <Button variant="outlined" onClick={() => void loadUsers()} disabled={busy}>
+          <Button variant="outlined" onClick={() => void loadUsers()} disabled={busy} sx={{ alignSelf: { xs: 'flex-start', sm: 'auto' } }}>
             Refresh
           </Button>
         </Stack>
 
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Email</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.email}>
-                <TableCell>{row.email}</TableCell>
-                <TableCell sx={{ minWidth: 160 }}>
-                  <FormControl size="small" fullWidth disabled={busy}>
-                    <Select
-                      value={rowRoleDraft[row.email] ?? row.role}
-                      onChange={(e) =>
-                        setRowRoleDraft((prev) => ({ ...prev, [row.email]: e.target.value as StaffRole }))
-                      }
-                    >
-                      <MenuItem value="staff">Staff</MenuItem>
-                      <MenuItem value="admin">Admin</MenuItem>
-                    </Select>
-                  </FormControl>
-                </TableCell>
-                <TableCell align="right">
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    sx={{ mr: 1 }}
-                    disabled={busy || (rowRoleDraft[row.email] ?? row.role) === row.role}
-                    onClick={() => void handleRoleSave(row.email)}
-                  >
-                    Save Role
-                  </Button>
-                  <Button
-                    color="error"
-                    variant="text"
-                    size="small"
-                    disabled={busy || row.email === (user?.email?.trim().toLowerCase() ?? '')}
-                    onClick={() => setRemoveEmail(row.email)}
-                  >
-                    Remove
-                  </Button>
+        <TableContainer
+          sx={{
+            width: '100%',
+            maxWidth: '100%',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          <Table
+            size="small"
+            sx={{
+              tableLayout: 'fixed',
+              width: '100%',
+              minWidth: { xs: 0, sm: 520 },
+            }}
+          >
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ width: { xs: '38%', sm: '40%' } }}>Email</TableCell>
+                <TableCell sx={{ width: { xs: '28%', sm: 160 } }}>Role</TableCell>
+                <TableCell align="right" sx={{ width: { xs: '34%', sm: 'auto' } }}>
+                  Actions
                 </TableCell>
               </TableRow>
-            ))}
+            </TableHead>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.email}>
+                  <TableCell
+                    sx={{
+                      wordBreak: 'break-word',
+                      overflowWrap: 'anywhere',
+                      verticalAlign: 'top',
+                    }}
+                  >
+                    {row.email}
+                  </TableCell>
+                  <TableCell sx={{ minWidth: 0, verticalAlign: 'top' }}>
+                    <FormControl size="small" fullWidth disabled={busy}>
+                      <Select
+                        value={rowRoleDraft[row.email] ?? row.role}
+                        onChange={(e) =>
+                          setRowRoleDraft((prev) => ({ ...prev, [row.email]: e.target.value as StaffRole }))
+                        }
+                      >
+                        <MenuItem value="staff">Staff</MenuItem>
+                        <MenuItem value="admin">Admin</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </TableCell>
+                  <TableCell align="right" sx={{ verticalAlign: 'top' }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={0.75}
+                      alignItems={{ xs: 'stretch', sm: 'flex-end' }}
+                      justifyContent="flex-end"
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        sx={{ display: { xs: 'flex', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' } }}
+                        disabled={busy || (rowRoleDraft[row.email] ?? row.role) === row.role}
+                        onClick={() => void handleRoleSave(row.email)}
+                      >
+                        Save Role
+                      </Button>
+                      <Button
+                        color="error"
+                        variant="text"
+                        size="small"
+                        fullWidth
+                        sx={{ display: { xs: 'flex', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' } }}
+                        disabled={busy || row.email === (user?.email?.trim().toLowerCase() ?? '')}
+                        onClick={() => setRemoveEmail(row.email)}
+                      >
+                        Remove
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={3}>
@@ -264,6 +306,7 @@ export default function AdminUsersPage() {
             )}
           </TableBody>
         </Table>
+        </TableContainer>
       </Paper>
 
       <Dialog open={Boolean(removeEmail)} onClose={() => setRemoveEmail(null)} maxWidth="xs" fullWidth>
