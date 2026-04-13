@@ -77,39 +77,11 @@ export function subscribeIncidents(onData: (incidents: SubmittedIncident[]) => v
 }
 
 export async function createIncident(incident: SubmittedIncident) {
-  const { error } = await withAuthTokenLockRetry(() =>
-    supabase.from('incidents').insert({
-      id: incident.id,
-      submitted_at: incident.submittedAt,
-      student_ids: incident.studentIds,
-      students: incident.students,
-      datetime_local: incident.datetimeLocal,
-      location: incident.location,
-      infraction_type: incident.infractionType,
-      severity: incident.severity,
-      description: incident.description,
-      actions_taken: incident.actionsTaken,
-      actions_other: incident.actionsOther,
-      media: incident.media,
-      send_email_notifications: incident.sendEmailNotifications,
-      student_notification_emails: incident.studentNotificationEmails,
-      parent_notification_emails: incident.parentNotificationEmails,
-      student_email_template: incident.studentEmailTemplate,
-      parent_email_template: incident.parentEmailTemplate,
-      email_status: incident.emailStatus,
-      email_queued_count: incident.emailQueuedCount,
-      email_error: incident.emailError,
-      recorded_by_email: incident.recordedByEmail || null,
-    }),
-  );
-  if (error) throw errorFromSupabaseResult(error);
-}
-
-export async function updateIncident(incident: SubmittedIncident) {
-  const { error } = await withAuthTokenLockRetry(() =>
-    supabase
-      .from('incidents')
-      .update({
+  try {
+    const { error } = await withAuthTokenLockRetry(() =>
+      supabase.from('incidents').insert({
+        id: incident.id,
+        submitted_at: incident.submittedAt,
         student_ids: incident.studentIds,
         students: incident.students,
         datetime_local: incident.datetimeLocal,
@@ -129,22 +101,66 @@ export async function updateIncident(incident: SubmittedIncident) {
         email_queued_count: incident.emailQueuedCount,
         email_error: incident.emailError,
         recorded_by_email: incident.recordedByEmail || null,
-      })
-      .eq('id', incident.id),
-  );
-  if (error) throw errorFromSupabaseResult(error);
+      }),
+    );
+    if (error) throw errorFromSupabaseResult(error);
+  } catch (err) {
+    throw errorFromSupabaseResult(err);
+  }
+}
+
+export async function updateIncident(incident: SubmittedIncident) {
+  try {
+    const { error } = await withAuthTokenLockRetry(() =>
+      supabase
+        .from('incidents')
+        .update({
+          student_ids: incident.studentIds,
+          students: incident.students,
+          datetime_local: incident.datetimeLocal,
+          location: incident.location,
+          infraction_type: incident.infractionType,
+          severity: incident.severity,
+          description: incident.description,
+          actions_taken: incident.actionsTaken,
+          actions_other: incident.actionsOther,
+          media: incident.media,
+          send_email_notifications: incident.sendEmailNotifications,
+          student_notification_emails: incident.studentNotificationEmails,
+          parent_notification_emails: incident.parentNotificationEmails,
+          student_email_template: incident.studentEmailTemplate,
+          parent_email_template: incident.parentEmailTemplate,
+          email_status: incident.emailStatus,
+          email_queued_count: incident.emailQueuedCount,
+          email_error: incident.emailError,
+          recorded_by_email: incident.recordedByEmail || null,
+        })
+        .eq('id', incident.id),
+    );
+    if (error) throw errorFromSupabaseResult(error);
+  } catch (err) {
+    throw errorFromSupabaseResult(err);
+  }
 }
 
 export async function deleteIncident(id: string) {
-  const { error } = await withAuthTokenLockRetry(() => supabase.from('incidents').delete().eq('id', id));
-  if (error) throw errorFromSupabaseResult(error);
+  try {
+    const { error } = await withAuthTokenLockRetry(() => supabase.from('incidents').delete().eq('id', id));
+    if (error) throw errorFromSupabaseResult(error);
+  } catch (err) {
+    throw errorFromSupabaseResult(err);
+  }
 }
 
 export async function fetchIncidentMedia(id: string) {
-  const { data, error } = await withAuthTokenLockRetry(() =>
-    supabase.from('incidents').select('media').eq('id', id).single(),
-  );
-  if (error) throw errorFromSupabaseResult(error);
-  return (data?.media ?? []) as SubmittedIncident['media'];
+  try {
+    const { data, error } = await withAuthTokenLockRetry(() =>
+      supabase.from('incidents').select('media').eq('id', id).single(),
+    );
+    if (error) throw errorFromSupabaseResult(error);
+    return (data?.media ?? []) as SubmittedIncident['media'];
+  } catch (err) {
+    throw errorFromSupabaseResult(err);
+  }
 }
 

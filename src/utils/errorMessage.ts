@@ -1,6 +1,7 @@
 const SUPABASE_ERR_KEYS = ['message', 'error_description', 'details', 'hint', 'code'] as const;
 
-function collectSupabaseParts(err: object): string[] {
+function collectSupabaseParts(err: object, depth = 0): string[] {
+  if (depth > 4) return [];
   const o = err as Record<string, unknown>;
   const parts: string[] = [];
   const push = (s: string) => {
@@ -12,6 +13,12 @@ function collectSupabaseParts(err: object): string[] {
     if (typeof v === 'string') push(v);
   }
   if (typeof o.error === 'string') push(o.error);
+  const nested = o.error;
+  if (nested !== null && typeof nested === 'object') {
+    for (const p of collectSupabaseParts(nested as object, depth + 1)) {
+      if (!parts.includes(p)) parts.push(p);
+    }
+  }
   return parts;
 }
 
@@ -38,17 +45,28 @@ export function errorFromSupabaseResult(error: unknown): Error {
 
 /**
  * Supabase PostgREST errors are often plain objects; `message` alone may be empty.
+ * `Error` is checked explicitly because `typeof err === 'object'` misses some edge cases.
  */
 export function messageFromUnknown(err: unknown, fallback: string): string {
   if (typeof err === 'string' && err.trim()) return err.trim();
+
+  if (err instanceof Error) {
+    const fromParts = collectSupabaseParts(err);
+    if (fromParts.length > 0) return fromParts.join(' — ');
+    if (err.message.trim()) return err.message.trim();
+  }
 
   if (err !== null && typeof err === 'object') {
     const parts = collectSupabaseParts(err);
     if (parts.length > 0) return parts.join(' — ');
   }
 
-  if (err instanceof Error && err.message.trim()) {
-    return err.message.trim();
+  if (err !== undefined && err !== null) {
+    try {
+      return `${fallback} (${String(err)})`;
+    } catch {
+      return fallback;
+    }
   }
 
   return fallback;
