@@ -818,7 +818,19 @@ function ReviewStep(props: {
       </Typography>
 
       <Box sx={{ display: 'grid', gap: 1.5 }}>
-        {submitError ? <Alert severity="error">{submitError}</Alert> : null}
+        {submitError ? (
+          <Alert severity="error">
+            {submitError}
+            {submitError.includes('incidents_severity_check') ? (
+              <Typography variant="body2" sx={{ mt: 1.25, display: 'block' }}>
+                Your Supabase project still has an old severity check (e.g. <code>low</code>/<code>medium</code>/
+                <code>high</code>) while the app saves <code>level_1</code>–<code>level_4</code>. Open{' '}
+                <strong>Supabase → SQL Editor</strong> and run the statements in{' '}
+                <code>supabase/migrations/20260413000000_severity_levels.sql</code> from this repo, then try again.
+              </Typography>
+            ) : null}
+          </Alert>
+        ) : null}
         <SummaryRow label="Students" value={studentLabels.length ? studentLabels.join(', ') : 'None'} />
         <SummaryRow label="When" value={form.datetimeLocal || 'Not set'} />
         <SummaryRow label="Location" value={form.location || 'Not set'} />
