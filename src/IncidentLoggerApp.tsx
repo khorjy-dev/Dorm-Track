@@ -30,8 +30,10 @@ import {
   defaultStudentNotificationEmails,
 } from './data/incidentEmailQueue';
 import type { StudentOption, StudentRecord } from './types/student';
+import { formatSeverityLabel, SEVERITY_OPTIONS, type Severity } from './utils/severity';
+import { severityChipColor } from './utils/severityChipColor';
 
-export type Severity = 'low' | 'medium' | 'high';
+export type { Severity };
 
 type MediaKind = 'image' | 'video';
 
@@ -95,7 +97,7 @@ type IncidentFormState = {
 
 const locationOptions = ['3rd Floor Hallway', 'Common Room', 'Outside Entrance', 'Student Room'] as const;
 
-const severityOptions: Severity[] = ['low', 'medium', 'high'];
+const severityOptions = SEVERITY_OPTIONS;
 
 function toLocalDatetimeInput(d: Date) {
   // Creates "YYYY-MM-DDTHH:mm" in local time for datetime-local.
@@ -168,7 +170,7 @@ export default function IncidentLoggerApp(props: {
     datetimeLocal: toLocalDatetimeInput(new Date()),
     location: '',
     infractionType: '',
-    severity: 'low',
+    severity: 'level_1',
     description: '',
     actionsTaken: [],
     actionsOther: '',
@@ -291,7 +293,7 @@ export default function IncidentLoggerApp(props: {
         datetimeLocal: toLocalDatetimeInput(new Date()),
         location: '',
         infractionType: '',
-        severity: 'low',
+        severity: 'level_1',
         description: '',
         actionsTaken: [],
         actionsOther: '',
@@ -525,7 +527,7 @@ function DetailsStep(props: {
       >
         {severityOptions.map((s) => (
           <ToggleButton key={s} value={s}>
-            {s === 'low' ? 'Low' : s === 'medium' ? 'Medium' : 'High'}
+            {formatSeverityLabel(s)}
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
@@ -804,7 +806,7 @@ function ReviewStep(props: {
 }) {
   const { form, onBack, onSubmit, studentLabelById, isSubmitting, submitError } = props;
 
-  const severityLabel = form.severity === 'low' ? 'Low' : form.severity === 'medium' ? 'Medium' : 'High';
+  const severityLabel = formatSeverityLabel(form.severity);
   const studentLabels = form.students.map((s) => studentLabelById.get(s) ?? s);
 
   return (
@@ -819,7 +821,10 @@ function ReviewStep(props: {
         <SummaryRow label="When" value={form.datetimeLocal || 'Not set'} />
         <SummaryRow label="Location" value={form.location || 'Not set'} />
         <SummaryRow label="Infraction Type" value={form.infractionType || 'Not set'} />
-        <SummaryRow label="Severity" value={<Chip size="small" label={severityLabel} color="primary" />} />
+        <SummaryRow
+          label="Severity"
+          value={<Chip size="small" label={severityLabel} color={severityChipColor(form.severity)} />}
+        />
         <SummaryRow
           label="Actions Taken"
           value={form.actionsTaken.length ? form.actionsTaken.join(', ') : 'None'}

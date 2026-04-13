@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
 import type { Severity, SubmittedIncident } from '../IncidentLoggerApp';
+import { formatSeverityLabel, SEVERITY_OPTIONS } from '../utils/severity';
 import { severityChipColor } from '../utils/severityChipColor';
 import { fetchIncidentMedia } from '../data/incidentStore';
 
@@ -75,6 +76,7 @@ export default function StaffReviewPage(props: {
         inc.location,
         inc.description,
         inc.recordedByEmail,
+        formatSeverityLabel(inc.severity),
         displayStudents.join(' '),
       ]
         .join(' ')
@@ -232,10 +234,12 @@ export default function StaffReviewPage(props: {
               onChange={(e) => setSeverityFilter(e.target.value as Severity | '')}
               fullWidth
             >
-              <MenuItem value="">All severities</MenuItem>
-              <MenuItem value="low">Low</MenuItem>
-              <MenuItem value="medium">Medium</MenuItem>
-              <MenuItem value="high">High</MenuItem>
+              <MenuItem value="">All levels</MenuItem>
+              {SEVERITY_OPTIONS.map((s) => (
+                <MenuItem key={s} value={s}>
+                  {formatSeverityLabel(s)}
+                </MenuItem>
+              ))}
             </TextField>
           </Box>
 
@@ -290,7 +294,7 @@ export default function StaffReviewPage(props: {
                               <Typography variant="subtitle2">{inc.infractionType}</Typography>
                               <Chip
                                 size="small"
-                                label={inc.severity.toUpperCase()}
+                                label={formatSeverityLabel(inc.severity)}
                                 color={severityChipColor(inc.severity)}
                               />
                             </Box>
@@ -401,9 +405,11 @@ export default function StaffReviewPage(props: {
                 }
                 fullWidth
               >
-                <MenuItem value="low">Low</MenuItem>
-                <MenuItem value="medium">Medium</MenuItem>
-                <MenuItem value="high">High</MenuItem>
+                {SEVERITY_OPTIONS.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {formatSeverityLabel(s)}
+                  </MenuItem>
+                ))}
               </TextField>
               <TextField
                 label="Students (Comma-Separated)"
@@ -445,7 +451,7 @@ export default function StaffReviewPage(props: {
                 <Typography variant="h6">{detailsIncident.infractionType}</Typography>
                 <Chip
                   size="small"
-                  label={detailsIncident.severity.toUpperCase()}
+                  label={formatSeverityLabel(detailsIncident.severity)}
                   color={severityChipColor(detailsIncident.severity)}
                 />
               </Box>

@@ -61,7 +61,7 @@ create table if not exists public.incidents (
   datetime_local text not null default '',
   location text not null default '',
   infraction_type text not null default '',
-  severity text not null default 'low' check (severity in ('low','medium','high')),
+  severity text not null default 'level_1' check (severity in ('level_1','level_2','level_3','level_4')),
   description text not null default '',
   actions_taken text[] not null default '{}',
   actions_other text not null default '',

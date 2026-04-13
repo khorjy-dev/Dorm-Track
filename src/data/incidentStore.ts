@@ -1,4 +1,5 @@
 import type { SubmittedIncident } from '../IncidentLoggerApp';
+import { normalizeSeverityFromDb } from '../utils/severity';
 import { supabase, withAuthTokenLockRetry } from '../lib/supabase';
 
 const INCIDENT_LIST_COLUMNS = [
@@ -33,7 +34,7 @@ function fromRow(row: any): SubmittedIncident {
     datetimeLocal: row.datetime_local ?? '',
     location: row.location ?? '',
     infractionType: row.infraction_type ?? '',
-    severity: row.severity ?? 'low',
+    severity: normalizeSeverityFromDb(row.severity),
     description: row.description ?? '',
     actionsTaken: row.actions_taken ?? [],
     actionsOther: row.actions_other ?? '',

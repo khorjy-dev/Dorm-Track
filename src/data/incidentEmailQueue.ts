@@ -1,4 +1,5 @@
 import type { SubmittedIncident } from '../IncidentLoggerApp';
+import { formatSeverityLabel } from '../utils/severity';
 import type { StudentRecord } from '../types/student';
 import { supabase, withAuthTokenLockRetry } from '../lib/supabase';
 
@@ -84,7 +85,7 @@ export async function queueInfractionEmails(incident: SubmittedIncident, student
     datetime: incident.datetimeLocal,
     location: incident.location,
     infractionType: incident.infractionType,
-    severity: incident.severity.toUpperCase(),
+    severity: formatSeverityLabel(incident.severity),
     description: incident.description || 'N/A',
     actions: incident.actionsTaken.join(', ') || 'None',
   };
