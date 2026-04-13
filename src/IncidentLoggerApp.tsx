@@ -32,6 +32,7 @@ import {
 import type { StudentOption, StudentRecord } from './types/student';
 import { formatSeverityLabel, SEVERITY_OPTIONS, type Severity } from './utils/severity';
 import { severityChipColor } from './utils/severityChipColor';
+import { messageFromUnknown } from './utils/errorMessage';
 
 export type { Severity };
 
@@ -238,17 +239,20 @@ export default function IncidentLoggerApp(props: {
       // Convert attached files to data URLs so they can be rendered later by other staff users.
       // This is a prototype approach; for production use Supabase Storage instead.
       const mediaToRevoke = form.media;
-      const mediaWithData: IncidentMediaMeta[] = await Promise.all(
-        form.media.map(async (m) => {
-          const dataUrl = await fileToDataUrl(m.file);
-          return {
-            id: m.id,
-            fileName: m.file.name,
-            kind: m.kind,
-            dataUrl,
-          };
-        }),
-      );
+      const mediaWithData: IncidentMediaMeta[] =
+        form.media.length === 0
+          ? []
+          : await Promise.all(
+              form.media.map(async (m) => {
+                const dataUrl = await fileToDataUrl(m.file);
+                return {
+                  id: m.id,
+                  fileName: m.file.name,
+                  kind: m.kind,
+                  dataUrl,
+                };
+              }),
+            );
 
       const incident: SubmittedIncident = {
         id: makeId('incident'),
@@ -274,13 +278,10 @@ export default function IncidentLoggerApp(props: {
         recordedByEmail: '',
       };
 
-      // eslint-disable-next-line no-console
-      console.log('SUBMIT INCIDENT', incident);
-
       if (onIncidentSubmitted) {
         await onIncidentSubmitted(incident);
       } else {
-        alert('Incident submitted (mock). Check console for payload.');
+        alert('Incident submitted (mock).');
       }
 
       // Clean up local object URLs (we also store permanent data URLs now).
@@ -305,8 +306,9 @@ export default function IncidentLoggerApp(props: {
         parentEmailTemplate: DEFAULT_PARENT_EMAIL_TEMPLATE,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to prepare incident data for submit.';
-      setSubmitError(message);
+      setSubmitError(
+        messageFromUnknown(err, 'Failed to prepare incident data for submit.'),
+      );
     } finally {
       setIsSubmitting(false);
     }

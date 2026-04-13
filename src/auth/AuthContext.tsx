@@ -30,7 +30,51 @@ type AuthContextValue = {
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 const ROLE_VALUES: Role[] = ['staff', 'admin'];
-const authRedirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin;
+
+/**
+ * OAuth `redirectTo` must be a full absolute URL (`https://host`). If the scheme is missing,
+ * GoTrue resolves it against `*.supabase.co` and you get
+ * `supabase.co/incidenttrack...?code=...` + {"error":"requested path is invalid"}.
+ */
+function toAbsoluteOAuthOrigin(raw: string): string | null {
+  let s = raw.trim().replace(/\/+$/, '');
+  if (!s) return null;
+  if (s.startsWith('//')) {
+    s = `https:${s}`;
+  } else if (!/^https?:\/\//i.test(s)) {
+    s = `https://${s.replace(/^\/+/, '')}`;
+  }
+  try {
+    const u = new URL(s);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
+/** Production app URL — fallback if `VITE_APP_ORIGIN` is missing from the Vite build. */
+const PRODUCTION_APP_ORIGIN = 'https://incidenttrack.olivetacademy.org';
+
+/**
+ * Where Supabase/Google should send the browser after OAuth.
+ * Non-local: prefer `VITE_APP_ORIGIN`, then production fallback, then current origin.
+ */
+function getAuthRedirectUrl(): string {
+  const isLocal =
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (isLocal) return window.location.origin;
+
+  const fromEnv = toAbsoluteOAuthOrigin(import.meta.env.VITE_APP_ORIGIN ?? '');
+  if (fromEnv) return fromEnv;
+
+  if (import.meta.env.PROD) {
+    const fallback = toAbsoluteOAuthOrigin(PRODUCTION_APP_ORIGIN);
+    if (fallback) return fallback;
+  }
+
+  return window.location.origin;
+}
 
 function normalizeRole(raw: unknown, fallback: Role): Role {
   if (typeof raw !== 'string') return fallback;
@@ -104,7 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       const message = err instanceof Error ? err.message : 'Failed to verify access.';
       setAuthError(message);
-      // eslint-disable-next-line no-console
       console.error('Failed to load role from Supabase:', err);
     } finally {
       if (!cancelled()) setLoading(false);
@@ -155,10 +198,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: authRedirectUrl },
+        options: { redirectTo: getAuthRedirectUrl() },
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Google sign-in failed:', err);
       const message =
         err instanceof Error ? err.message : 'Google sign-in failed. Check console for details.';

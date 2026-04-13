@@ -32,14 +32,10 @@ import { DEFAULT_LOCATIONS } from './data/locations';
 import { replaceLocations, subscribeLocations } from './data/locationsStore';
 import { DEFAULT_ACTIONS_TAKEN } from './data/actionsTaken';
 import { replaceActionsTaken, subscribeActionsTaken } from './data/actionsTakenStore';
+import { messageFromUnknown } from './utils/errorMessage';
 
 function displayError(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'message' in err) {
-    const m = (err as { message?: string }).message;
-    if (typeof m === 'string' && m.length > 0) return m;
-  }
-  if (err instanceof Error) return err.message;
-  return fallback;
+  return messageFromUnknown(err, fallback);
 }
 
 type View =
@@ -171,7 +167,11 @@ function AuthRoot() {
   }, [user, has, view, setViewAndPersist]);
 
   const handleIncidentSubmitted = async (incident: SubmittedIncident) => {
-    const withRecorder = { ...incident, recordedByEmail: user?.email?.trim() ?? '' };
+    const email = user?.email?.trim();
+    if (!email) {
+      throw new Error('Your school email is required to save incidents. Try signing out and signing in again.');
+    }
+    const withRecorder = { ...incident, recordedByEmail: email.toLowerCase() };
     await createIncident(withRecorder);
     // Show immediate success and reflect the new row before polling catches up.
     setIncidents((prev) => (prev.some((x) => x.id === withRecorder.id) ? prev : [withRecorder, ...prev]));

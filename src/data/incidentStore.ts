@@ -1,4 +1,5 @@
 import type { SubmittedIncident } from '../IncidentLoggerApp';
+import { errorFromSupabaseResult } from '../utils/errorMessage';
 import { normalizeSeverityFromDb } from '../utils/severity';
 import { supabase, withAuthTokenLockRetry } from '../lib/supabase';
 
@@ -101,7 +102,7 @@ export async function createIncident(incident: SubmittedIncident) {
       recorded_by_email: incident.recordedByEmail || null,
     }),
   );
-  if (error) throw error;
+  if (error) throw errorFromSupabaseResult(error);
 }
 
 export async function updateIncident(incident: SubmittedIncident) {
@@ -131,19 +132,19 @@ export async function updateIncident(incident: SubmittedIncident) {
       })
       .eq('id', incident.id),
   );
-  if (error) throw error;
+  if (error) throw errorFromSupabaseResult(error);
 }
 
 export async function deleteIncident(id: string) {
   const { error } = await withAuthTokenLockRetry(() => supabase.from('incidents').delete().eq('id', id));
-  if (error) throw error;
+  if (error) throw errorFromSupabaseResult(error);
 }
 
 export async function fetchIncidentMedia(id: string) {
   const { data, error } = await withAuthTokenLockRetry(() =>
     supabase.from('incidents').select('media').eq('id', id).single(),
   );
-  if (error) throw error;
+  if (error) throw errorFromSupabaseResult(error);
   return (data?.media ?? []) as SubmittedIncident['media'];
 }
 

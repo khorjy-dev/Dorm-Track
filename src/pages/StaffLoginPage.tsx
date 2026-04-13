@@ -39,7 +39,6 @@ export default function StaffLoginPage() {
     params.delete('error');
     params.delete('error_code');
     params.delete('error_description');
-    params.delete('error_description');
     const next = params.toString();
     const cleanUrl = `${window.location.pathname}${next ? `?${next}` : ''}${window.location.hash || ''}`;
     window.history.replaceState({}, '', cleanUrl);
