@@ -9,14 +9,17 @@ type Recipient = {
   relation: 'student' | 'parent';
 };
 
-export function defaultStudentNotificationEmails(involved: StudentRecord[]): string {
-  const emails = [...new Set(involved.map((s) => s.studentEmail.trim()).filter(Boolean))];
+function joinUniqueEmails(values: string[]): string {
+  const emails = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
   return emails.join(', ');
 }
 
+export function defaultStudentNotificationEmails(involved: StudentRecord[]): string {
+  return joinUniqueEmails(involved.map((student) => student.studentEmail));
+}
+
 export function defaultParentNotificationEmails(involved: StudentRecord[]): string {
-  const emails = [...new Set(involved.map((s) => s.parentEmail.trim()).filter(Boolean))];
-  return emails.join(', ');
+  return joinUniqueEmails(involved.map((student) => student.parentEmail));
 }
 
 /** Split user-editable recipient field (comma/semicolon/newline). Dedupe, preserve order. */

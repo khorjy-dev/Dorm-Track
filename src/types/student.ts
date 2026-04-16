@@ -1,7 +1,7 @@
 export const GRADE_LEVELS = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] as const;
 
 export type StudentRecord = {
-  id: string; // Firestore doc id
+  id: string; // Supabase row id
   studentId: string; // school student number/id
   gradeLevel: (typeof GRADE_LEVELS)[number];
   firstName: string;

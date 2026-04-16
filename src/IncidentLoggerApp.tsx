@@ -265,7 +265,7 @@ export default function IncidentLoggerApp(props: {
         parentNotificationEmails: form.parentNotificationEmails,
         studentEmailTemplate: form.studentEmailTemplate,
         parentEmailTemplate: form.parentEmailTemplate,
-        emailStatus: form.sendEmailNotifications ? 'not_requested' : 'not_requested',
+        emailStatus: 'not_requested',
         emailQueuedCount: 0,
         emailError: '',
         recordedByEmail: '',

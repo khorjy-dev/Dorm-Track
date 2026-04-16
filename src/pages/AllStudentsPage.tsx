@@ -149,7 +149,7 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
           Student list
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Full student directory from Firestore.
+          Full student directory from Supabase.
         </Typography>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
