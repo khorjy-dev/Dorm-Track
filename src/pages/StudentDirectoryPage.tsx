@@ -22,7 +22,6 @@ const REQUIRED_HEADERS = [
   'student_email',
   'parent_name',
   'parent_email',
-  'room_number',
 ] as const;
 
 function normalizeHeader(header: string) {
@@ -62,7 +61,6 @@ export default function StudentDirectoryPage() {
   const [studentEmail, setStudentEmail] = React.useState('');
   const [parentName, setParentName] = React.useState('');
   const [parentEmail, setParentEmail] = React.useState('');
-  const [roomNumber, setRoomNumber] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -75,8 +73,7 @@ export default function StudentDirectoryPage() {
     lastName.trim() &&
     studentEmail.trim() &&
     parentName.trim() &&
-    parentEmail.trim() &&
-    roomNumber.trim();
+    parentEmail.trim();
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -92,7 +89,7 @@ export default function StudentDirectoryPage() {
         studentEmail: studentEmail.trim(),
         parentName: parentName.trim(),
         parentEmail: parentEmail.trim(),
-        roomNumber: roomNumber.trim(),
+        roomNumber: '',
         active: true,
       });
       setStudentId('');
@@ -102,7 +99,6 @@ export default function StudentDirectoryPage() {
       setStudentEmail('');
       setParentName('');
       setParentEmail('');
-      setRoomNumber('');
       setMessage('Student created.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create student.';
@@ -137,7 +133,7 @@ export default function StudentDirectoryPage() {
       }
 
       const headerIndex = new Map(headers.map((h, idx) => [h, idx]));
-      const getValue = (row: string[], key: (typeof REQUIRED_HEADERS)[number]) =>
+      const getValue = (row: string[], key: string) =>
         (row[headerIndex.get(key) ?? -1] ?? '').trim();
 
       let created = 0;
@@ -156,7 +152,7 @@ export default function StudentDirectoryPage() {
           studentEmail: getValue(row, 'student_email'),
           parentName: getValue(row, 'parent_name'),
           parentEmail: getValue(row, 'parent_email'),
-          roomNumber: getValue(row, 'room_number'),
+          roomNumber: headerIndex.has('room_number') ? getValue(row, 'room_number') : '',
           active: true,
         });
         created += 1;
@@ -187,7 +183,7 @@ export default function StudentDirectoryPage() {
             Bulk Upload via CSV
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Required columns: student_id, grade_level, first_name, last_name, student_email, parent_name, parent_email, room_number
+            Required columns: student_id, grade_level, first_name, last_name, student_email, parent_name, parent_email
           </Typography>
           <Button component="label" variant="outlined" disabled={saving}>
             {saving ? 'Uploading...' : 'Upload CSV'}
@@ -251,13 +247,6 @@ export default function StudentDirectoryPage() {
                 type="email"
                 value={studentEmail}
                 onChange={(e) => setStudentEmail(e.target.value)}
-                fullWidth
-                required
-              />
-              <TextField
-                label="Room Number"
-                value={roomNumber}
-                onChange={(e) => setRoomNumber(e.target.value)}
                 fullWidth
                 required
               />

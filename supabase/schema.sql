@@ -12,15 +12,8 @@ create table if not exists public.students (
   student_email text not null,
   parent_name text not null,
   parent_email text not null,
-  room_number text not null,
+  room_number text,
   active boolean not null default true,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.infraction_types (
-  id uuid primary key default gen_random_uuid(),
-  name text not null unique,
-  position int not null default 1,
   created_at timestamptz not null default now()
 );
 
@@ -60,7 +53,6 @@ create table if not exists public.incidents (
   students text[] not null default '{}',
   datetime_local text not null default '',
   location text not null default '',
-  infraction_type text not null default '',
   severity text not null default 'level_1' check (severity in ('level_1','level_2','level_3','level_4')),
   description text not null default '',
   actions_taken text[] not null default '{}',
@@ -136,7 +128,6 @@ grant execute on function public.current_user_role() to postgres;
 
 -- Row level security: JWT email must exist in staff_email_allowlist. Bootstrap: supabase/bootstrap-staff.sql
 alter table public.students enable row level security;
-alter table public.infraction_types enable row level security;
 alter table public.incident_locations enable row level security;
 alter table public.incident_actions enable row level security;
 alter table public.user_roles enable row level security;
@@ -174,18 +165,6 @@ begin
 
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='students' and policyname='students_staff_email') then
     create policy students_staff_email on public.students
-      for all to authenticated
-      using (exists (
-        select 1 from public.staff_email_allowlist a
-        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
-      ))
-      with check (exists (
-        select 1 from public.staff_email_allowlist a
-        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
-      ));
-  end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='infraction_types' and policyname='infraction_types_staff_email') then
-    create policy infraction_types_staff_email on public.infraction_types
       for all to authenticated
       using (exists (
         select 1 from public.staff_email_allowlist a
@@ -272,16 +251,6 @@ begin
   end if;
 end
 $$;
-
--- Seed defaults once.
-insert into public.infraction_types(name, position)
-values
-  ('Curfew', 1),
-  ('Noise', 2),
-  ('Missing from room', 3),
-  ('Guest violation', 4),
-  ('Other', 5)
-on conflict (name) do nothing;
 
 insert into public.incident_locations(name, position)
 values

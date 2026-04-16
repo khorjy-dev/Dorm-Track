@@ -17,17 +17,14 @@ import StaffLoginPage from './pages/StaffLoginPage';
 import StaffReviewPage from './pages/StaffReviewPage';
 import StudentDirectoryPage from './pages/StudentDirectoryPage';
 import AllStudentsPage from './pages/AllStudentsPage';
-import InfractionTypesPage from './pages/InfractionTypesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import LocationsPage from './pages/LocationsPage';
 import ActionsTakenPage from './pages/ActionsTakenPage';
 import { subscribeStudents } from './data/studentDirectory';
 import { resolveStudentLabel, STUDENT_OPTIONS } from './data/students';
 import { toStudentOption, type StudentRecord } from './types/student';
-import { DEFAULT_INFRACTION_TYPES } from './data/infractionTypes';
 import { queueInfractionEmails } from './data/incidentEmailQueue';
 import { createIncident, deleteIncident, subscribeIncidents, updateIncident } from './data/incidentStore';
-import { replaceInfractionTypes, subscribeInfractionTypes } from './data/infractionTypesStore';
 import { DEFAULT_LOCATIONS } from './data/locations';
 import { replaceLocations, subscribeLocations } from './data/locationsStore';
 import { DEFAULT_ACTIONS_TAKEN } from './data/actionsTaken';
@@ -43,7 +40,6 @@ type View =
   | 'review'
   | 'students'
   | 'allStudents'
-  | 'infractions'
   | 'users'
   | 'locations'
   | 'actionsTaken';
@@ -55,7 +51,6 @@ function isView(value: unknown): value is View {
     value === 'review' ||
     value === 'students' ||
     value === 'allStudents' ||
-    value === 'infractions' ||
     value === 'users' ||
     value === 'locations' ||
     value === 'actionsTaken'
@@ -66,7 +61,6 @@ function AuthRoot() {
   const { user, logout, has, loading } = useAuth();
   const [incidents, setIncidents] = React.useState<SubmittedIncident[]>([]);
   const [students, setStudents] = React.useState<StudentRecord[]>([]);
-  const [infractionTypes, setInfractionTypes] = React.useState<string[]>(DEFAULT_INFRACTION_TYPES);
   const [locations, setLocations] = React.useState<string[]>(DEFAULT_LOCATIONS);
   const [actionsTakenOptions, setActionsTakenOptions] = React.useState<string[]>(DEFAULT_ACTIONS_TAKEN);
   const [studentLoadError, setStudentLoadError] = React.useState<string | null>(null);
@@ -113,17 +107,6 @@ function AuthRoot() {
 
   React.useEffect(() => {
     if (!user) return;
-    const unsub = subscribeInfractionTypes(
-      (types) => setInfractionTypes(types),
-      () => {
-        // keep defaults when unavailable
-      },
-    );
-    return () => unsub();
-  }, [user]);
-
-  React.useEffect(() => {
-    if (!user) return;
     const unsub = subscribeActionsTaken(
       (actions) => setActionsTakenOptions(actions),
       () => {
@@ -156,7 +139,6 @@ function AuthRoot() {
       (view === 'review' && has('incident:review')) ||
       ((view === 'students' ||
         view === 'allStudents' ||
-        view === 'infractions' ||
         view === 'locations' ||
         view === 'actionsTaken') &&
         has('users:manage')) ||
@@ -312,7 +294,6 @@ function AuthRoot() {
               <Button
                 fullWidth
                 variant={
-                  view === 'infractions' ||
                   view === 'allStudents' ||
                   view === 'students' ||
                   view === 'users' ||
@@ -346,14 +327,6 @@ function AuthRoot() {
               }}
             >
               Manage Students
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setViewAndPersist('infractions');
-                setManageAnchorEl(null);
-              }}
-            >
-              Manage Infraction Types
             </MenuItem>
             <MenuItem
               onClick={() => {
@@ -408,7 +381,6 @@ function AuthRoot() {
             onIncidentSubmitted={handleIncidentSubmitted}
             studentOptions={studentOptions}
             studentRecords={students}
-            infractionTypes={infractionTypes}
             locationOptions={locations}
             actionsTakenOptions={actionsTakenOptions}
           />
@@ -424,18 +396,6 @@ function AuthRoot() {
         )}
 
         {view === 'students' && has('users:manage') && <StudentDirectoryPage />}
-        {view === 'infractions' && has('users:manage') && (
-          <InfractionTypesPage
-            infractionTypes={infractionTypes}
-            onChange={(next) => {
-              setInfractionTypes(next);
-              void replaceInfractionTypes(next).catch((err) => {
-                const msg = err && typeof err === 'object' && 'message' in err ? String((err as any).message) : 'Failed to save infraction types.';
-                setEmailNotice(`Infraction types save error: ${msg}`);
-              });
-            }}
-          />
-        )}
         {view === 'locations' && has('users:manage') && (
           <LocationsPage
             locations={locations}

@@ -29,7 +29,6 @@ import { fetchIncidentMedia } from '../data/incidentStore';
 type EditDraft = {
   datetimeLocal: string;
   location: string;
-  infractionType: string;
   severity: Severity;
   description: string;
   studentsCsv: string;
@@ -72,7 +71,6 @@ export default function StaffReviewPage(props: {
       const datePart = (inc.datetimeLocal || '').slice(0, 10); // YYYY-MM-DD
       const displayStudents = inc.students.map(resolveStudent);
       const searchIndex = [
-        inc.infractionType,
         inc.location,
         inc.description,
         inc.recordedByEmail,
@@ -122,7 +120,6 @@ export default function StaffReviewPage(props: {
     setDraft({
       datetimeLocal: incident.datetimeLocal,
       location: incident.location,
-      infractionType: incident.infractionType,
       severity: incident.severity,
       description: incident.description,
       studentsCsv: incident.students.join(', '),
@@ -160,7 +157,6 @@ export default function StaffReviewPage(props: {
       ...editingIncident,
       datetimeLocal: draft.datetimeLocal,
       location: draft.location,
-      infractionType: draft.infractionType,
       severity: draft.severity,
       description: draft.description,
       students: students.map(resolveStudent),
@@ -291,7 +287,7 @@ export default function StaffReviewPage(props: {
                         <ListItemText
                           primary={
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                              <Typography variant="subtitle2">{inc.infractionType}</Typography>
+                              <Typography variant="subtitle2">Incident</Typography>
                               <Chip
                                 size="small"
                                 label={formatSeverityLabel(inc.severity)}
@@ -391,12 +387,6 @@ export default function StaffReviewPage(props: {
                 fullWidth
               />
               <TextField
-                label="Infraction Type"
-                value={draft.infractionType}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, infractionType: e.target.value } : prev))}
-                fullWidth
-              />
-              <TextField
                 select
                 label="Severity"
                 value={draft.severity}
@@ -448,7 +438,7 @@ export default function StaffReviewPage(props: {
                 return (
                   <>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                <Typography variant="h6">{detailsIncident.infractionType}</Typography>
+                <Typography variant="h6">Incident</Typography>
                 <Chip
                   size="small"
                   label={formatSeverityLabel(detailsIncident.severity)}

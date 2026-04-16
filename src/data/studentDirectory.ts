@@ -50,7 +50,7 @@ export async function createStudent(input: Omit<StudentRecord, 'id'>) {
     student_email: input.studentEmail,
     parent_name: input.parentName,
     parent_email: input.parentEmail,
-    room_number: input.roomNumber,
+    room_number: input.roomNumber.trim() || null,
     active: input.active,
   });
   if (error) throw error;
@@ -67,7 +67,7 @@ export async function updateStudent(id: string, input: Omit<StudentRecord, 'id'>
       student_email: input.studentEmail,
       parent_name: input.parentName,
       parent_email: input.parentEmail,
-      room_number: input.roomNumber,
+      room_number: input.roomNumber.trim() || null,
       active: input.active,
     })
     .eq('id', id);

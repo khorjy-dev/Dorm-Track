@@ -61,7 +61,6 @@ export type SubmittedIncident = {
   students: string[];
   datetimeLocal: string;
   location: string;
-  infractionType: string;
   severity: Severity;
   description: string;
   actionsTaken: string[];
@@ -83,7 +82,6 @@ type IncidentFormState = {
   students: string[]; // student ids
   datetimeLocal: string; // value for <input type="datetime-local">
   location: string;
-  infractionType: string;
   severity: Severity;
   description: string;
   actionsTaken: string[];
@@ -125,17 +123,16 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 const DEFAULT_STUDENT_EMAIL_TEMPLATE =
-  'Hello {{name}},\n\nAn infraction has been logged.\nStudents: {{students}}\nDate/Time: {{datetime}}\nLocation: {{location}}\nType: {{infractionType}}\nSeverity: {{severity}}\nDescription: {{description}}\nActions: {{actions}}';
+  'Hello {{name}},\n\nAn incident has been logged.\nStudents: {{students}}\nDate/Time: {{datetime}}\nLocation: {{location}}\nSeverity: {{severity}}\nDescription: {{description}}\nActions: {{actions}}';
 
 const DEFAULT_PARENT_EMAIL_TEMPLATE =
-  'Hello {{name}},\n\nThis is to notify you that a student infraction has been logged.\nStudents: {{students}}\nDate/Time: {{datetime}}\nLocation: {{location}}\nType: {{infractionType}}\nSeverity: {{severity}}\nDescription: {{description}}\nActions: {{actions}}';
+  'Hello {{name}},\n\nThis is to notify you that a student incident has been logged.\nStudents: {{students}}\nDate/Time: {{datetime}}\nLocation: {{location}}\nSeverity: {{severity}}\nDescription: {{description}}\nActions: {{actions}}';
 
 export default function IncidentLoggerApp(props: {
   onIncidentSubmitted?: (incident: SubmittedIncident) => Promise<void> | void;
   studentOptions?: StudentOption[];
   /** Directory rows for selected students — used to pre-fill notification recipient fields. */
   studentRecords?: StudentRecord[];
-  infractionTypes?: string[];
   locationOptions?: string[];
   /** Action chips on the Details step (from admin-managed list). */
   actionsTakenOptions?: string[];
@@ -144,7 +141,6 @@ export default function IncidentLoggerApp(props: {
     onIncidentSubmitted,
     studentOptions = STUDENT_OPTIONS,
     studentRecords = [],
-    infractionTypes = ['Other'],
     locationOptions: locationOptionsProp = locationOptions as unknown as string[],
     actionsTakenOptions: actionsTakenOptionsProp = DEFAULT_ACTIONS_TAKEN,
   } = props;
@@ -170,7 +166,6 @@ export default function IncidentLoggerApp(props: {
     students: [],
     datetimeLocal: toLocalDatetimeInput(new Date()),
     location: '',
-    infractionType: '',
     severity: 'level_1',
     description: '',
     actionsTaken: [],
@@ -225,8 +220,7 @@ export default function IncidentLoggerApp(props: {
   const canProceedBasics =
     form.students.length > 0 &&
     form.datetimeLocal.trim().length > 0 &&
-    form.location.trim().length > 0 &&
-    form.infractionType.trim().length > 0;
+    form.location.trim().length > 0;
 
   const handleNext = () => setActiveStep((s) => Math.min(s + 1, steps.length - 1));
   const handleBack = () => setActiveStep((s) => Math.max(s - 1, 0));
@@ -261,7 +255,6 @@ export default function IncidentLoggerApp(props: {
         students: form.students.map((id) => studentLabelById.get(id) ?? resolveStudentLabel(id)),
         datetimeLocal: form.datetimeLocal,
         location: form.location,
-        infractionType: form.infractionType,
         severity: form.severity,
         description: form.description,
         actionsTaken: form.actionsTaken,
@@ -293,7 +286,6 @@ export default function IncidentLoggerApp(props: {
         students: [],
         datetimeLocal: toLocalDatetimeInput(new Date()),
         location: '',
-        infractionType: '',
         severity: 'level_1',
         description: '',
         actionsTaken: [],
@@ -339,7 +331,6 @@ export default function IncidentLoggerApp(props: {
               setForm={setForm}
               studentsOptions={studentOptions}
               locationOptions={locationOptionsProp}
-              infractionTypes={infractionTypes}
               canProceed={canProceedBasics}
               onNext={handleNext}
             />
@@ -378,11 +369,10 @@ function BasicsStep(props: {
   setForm: React.Dispatch<React.SetStateAction<IncidentFormState>>;
   studentsOptions: StudentOption[];
   locationOptions: string[];
-  infractionTypes: readonly string[];
   canProceed: boolean;
   onNext: () => void;
 }) {
-  const { form, setForm, studentsOptions, locationOptions, infractionTypes, canProceed, onNext } = props;
+  const { form, setForm, studentsOptions, locationOptions, canProceed, onNext } = props;
 
   return (
     <Box>
@@ -443,26 +433,6 @@ function BasicsStep(props: {
             ))}
           </TextField>
         </Box>
-      </Box>
-
-      <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        Infraction Type
-      </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-        {infractionTypes.map((t) => {
-          const active = form.infractionType === t;
-          return (
-            <Button
-              key={t}
-              variant={active ? 'contained' : 'outlined'}
-              onClick={() => setForm((prev) => ({ ...prev, infractionType: t }))}
-              size="small"
-              sx={{ borderRadius: '999px' }}
-            >
-              {t}
-            </Button>
-          );
-        })}
       </Box>
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
@@ -592,7 +562,7 @@ function DetailsStep(props: {
       <Collapse in={form.sendEmailNotifications} timeout="auto" unmountOnExit>
         <Box sx={{ display: 'grid', gap: 1.25, mb: 1, pt: 0.25 }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-            {`Use placeholders: {{name}}, {{students}}, {{datetime}}, {{location}}, {{infractionType}}, {{severity}}, {{description}}, {{actions}}`}
+            {`Use placeholders: {{name}}, {{students}}, {{datetime}}, {{location}}, {{severity}}, {{description}}, {{actions}}`}
           </Typography>
           <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
             Notification recipients
@@ -834,7 +804,6 @@ function ReviewStep(props: {
         <SummaryRow label="Students" value={studentLabels.length ? studentLabels.join(', ') : 'None'} />
         <SummaryRow label="When" value={form.datetimeLocal || 'Not set'} />
         <SummaryRow label="Location" value={form.location || 'Not set'} />
-        <SummaryRow label="Infraction Type" value={form.infractionType || 'Not set'} />
         <SummaryRow
           label="Severity"
           value={<Chip size="small" label={severityLabel} color={severityChipColor(form.severity)} />}

@@ -31,7 +31,6 @@ type SortField =
   | 'gradeLevel'
   | 'name'
   | 'studentEmail'
-  | 'roomNumber'
   | 'parentName'
   | 'parentEmail';
 
@@ -55,7 +54,6 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
         fullName.includes(q) ||
         s.studentId.toLowerCase().includes(q) ||
         s.studentEmail.toLowerCase().includes(q) ||
-        s.roomNumber.toLowerCase().includes(q) ||
         s.parentName.toLowerCase().includes(q) ||
         s.parentEmail.toLowerCase().includes(q) ||
         s.gradeLevel.toLowerCase().includes(q)
@@ -76,8 +74,6 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
             return `${s.firstName} ${s.lastName}`.trim();
           case 'studentEmail':
             return s.studentEmail;
-          case 'roomNumber':
-            return s.roomNumber;
           case 'parentName':
             return s.parentName;
           case 'parentEmail':
@@ -161,7 +157,7 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
           label="Search Students"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Name, student ID, room, grade, email..."
+          placeholder="Name, student ID, grade, email..."
           fullWidth
           sx={{ mb: 2 }}
         />
@@ -184,7 +180,6 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
                     <Typography variant="body2"><b>ID:</b> {s.studentId}</Typography>
                     <Typography variant="body2"><b>Grade:</b> {s.gradeLevel}</Typography>
                     <Typography variant="body2"><b>Student Email:</b> {s.studentEmail}</Typography>
-                    <Typography variant="body2"><b>Room:</b> {s.roomNumber}</Typography>
                     <Typography variant="body2"><b>Parent:</b> {s.parentName}</Typography>
                     <Typography variant="body2"><b>Parent Email:</b> {s.parentEmail}</Typography>
                     <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
@@ -207,7 +202,6 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
                       <SortHeader field="gradeLevel" label="Grade" />
                       <SortHeader field="name" label="Name" />
                       <SortHeader field="studentEmail" label="Student Email" />
-                      <SortHeader field="roomNumber" label="Room" />
                       <SortHeader field="parentName" label="Parent Name" />
                       <SortHeader field="parentEmail" label="Parent Email" />
                       <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>Actions</TableCell>
@@ -220,7 +214,6 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
                         <TableCell>{s.gradeLevel}</TableCell>
                         <TableCell>{`${s.firstName} ${s.lastName}`}</TableCell>
                         <TableCell sx={{ wordBreak: 'break-word' }}>{s.studentEmail}</TableCell>
-                        <TableCell>{s.roomNumber}</TableCell>
                         <TableCell sx={{ wordBreak: 'break-word' }}>{s.parentName}</TableCell>
                         <TableCell sx={{ wordBreak: 'break-word' }}>{s.parentEmail}</TableCell>
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
@@ -290,13 +283,6 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
                 label="Student Email"
                 value={editing.studentEmail}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, studentEmail: e.target.value } : prev))}
-                fullWidth
-                margin="dense"
-              />
-              <TextField
-                label="Room Number"
-                value={editing.roomNumber}
-                onChange={(e) => setEditing((prev) => (prev ? { ...prev, roomNumber: e.target.value } : prev))}
                 fullWidth
                 margin="dense"
               />

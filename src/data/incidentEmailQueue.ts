@@ -84,7 +84,6 @@ export async function queueInfractionEmails(incident: SubmittedIncident, student
     students: incident.students.join(', '),
     datetime: incident.datetimeLocal,
     location: incident.location,
-    infractionType: incident.infractionType,
     severity: formatSeverityLabel(incident.severity),
     description: incident.description || 'N/A',
     actions: incident.actionsTaken.join(', ') || 'None',
@@ -96,12 +95,11 @@ export async function queueInfractionEmails(incident: SubmittedIncident, student
       .replaceAll('{{students}}', commonVars.students)
       .replaceAll('{{datetime}}', commonVars.datetime)
       .replaceAll('{{location}}', commonVars.location)
-      .replaceAll('{{infractionType}}', commonVars.infractionType)
       .replaceAll('{{severity}}', commonVars.severity)
       .replaceAll('{{description}}', commonVars.description)
       .replaceAll('{{actions}}', commonVars.actions);
 
-  const subject = `Dorm infraction notice: ${incident.infractionType}`;
+  const subject = `Dorm incident notice`;
 
   const payload = recipients.map((r) => ({
     to_email: r.email,
