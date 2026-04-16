@@ -6,7 +6,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.students (
   id uuid primary key default gen_random_uuid(),
   student_id text not null unique,
-  grade_level text not null check (grade_level in ('7','8','9','10','11','12')),
+  grade_level text not null check (grade_level in ('K','1','2','3','4','5','6','7','8','9','10','11','12')),
   first_name text not null,
   last_name text not null,
   student_email text not null,

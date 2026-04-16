@@ -23,7 +23,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import type { StudentRecord } from '../types/student';
+import { GRADE_LEVELS, getGradeLevelSortValue, type StudentRecord } from '../types/student';
 import { deleteStudent, updateStudent } from '../data/studentDirectory';
 
 type SortField =
@@ -69,7 +69,7 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
           case 'studentId':
             return s.studentId;
           case 'gradeLevel':
-            return Number(s.gradeLevel);
+            return getGradeLevelSortValue(s.gradeLevel);
           case 'name':
             return `${s.firstName} ${s.lastName}`.trim();
           case 'studentEmail':
@@ -258,12 +258,11 @@ export default function AllStudentsPage(props: { students: StudentRecord[] }) {
                 fullWidth
                 margin="dense"
               >
-                <MenuItem value="7">7</MenuItem>
-                <MenuItem value="8">8</MenuItem>
-                <MenuItem value="9">9</MenuItem>
-                <MenuItem value="10">10</MenuItem>
-                <MenuItem value="11">11</MenuItem>
-                <MenuItem value="12">12</MenuItem>
+                {GRADE_LEVELS.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {value}
+                  </MenuItem>
+                ))}
               </TextField>
               <TextField
                 label="First Name"

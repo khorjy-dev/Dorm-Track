@@ -11,8 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import { createStudent } from '../data/studentDirectory';
-
-type GradeLevel = '7' | '8' | '9' | '10' | '11' | '12';
+import { GRADE_LEVELS, type StudentRecord } from '../types/student';
 
 const REQUIRED_HEADERS = [
   'student_id',
@@ -55,7 +54,7 @@ function parseCsvLine(line: string): string[] {
 
 export default function StudentDirectoryPage() {
   const [studentId, setStudentId] = React.useState('');
-  const [gradeLevel, setGradeLevel] = React.useState<GradeLevel>('9');
+  const [gradeLevel, setGradeLevel] = React.useState<StudentRecord['gradeLevel']>('9');
   const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');
   const [studentEmail, setStudentEmail] = React.useState('');
@@ -139,8 +138,8 @@ export default function StudentDirectoryPage() {
       let created = 0;
       for (let i = 1; i < lines.length; i += 1) {
         const row = parseCsvLine(lines[i]);
-        const grade = getValue(row, 'grade_level') as GradeLevel;
-        if (!['7', '8', '9', '10', '11', '12'].includes(grade)) {
+        const grade = getValue(row, 'grade_level') as StudentRecord['gradeLevel'];
+        if (!GRADE_LEVELS.includes(grade)) {
           throw new Error(`Invalid grade_level at row ${i + 1}: "${grade}"`);
         }
 
@@ -211,16 +210,15 @@ export default function StudentDirectoryPage() {
                 select
                 label="Grade Level"
                 value={gradeLevel}
-                onChange={(e) => setGradeLevel(e.target.value as '7' | '8' | '9' | '10' | '11' | '12')}
+                onChange={(e) => setGradeLevel(e.target.value as StudentRecord['gradeLevel'])}
                 fullWidth
                 required
               >
-                <MenuItem value="7">7</MenuItem>
-                <MenuItem value="8">8</MenuItem>
-                <MenuItem value="9">9</MenuItem>
-                <MenuItem value="10">10</MenuItem>
-                <MenuItem value="11">11</MenuItem>
-                <MenuItem value="12">12</MenuItem>
+                {GRADE_LEVELS.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {value}
+                  </MenuItem>
+                ))}
               </TextField>
             </Box>
 

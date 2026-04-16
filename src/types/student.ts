@@ -1,7 +1,9 @@
+export const GRADE_LEVELS = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] as const;
+
 export type StudentRecord = {
   id: string; // Firestore doc id
   studentId: string; // school student number/id
-  gradeLevel: '7' | '8' | '9' | '10' | '11' | '12';
+  gradeLevel: (typeof GRADE_LEVELS)[number];
   firstName: string;
   lastName: string;
   studentEmail: string;
@@ -10,6 +12,10 @@ export type StudentRecord = {
   roomNumber: string;
   active: boolean;
 };
+
+export function getGradeLevelSortValue(gradeLevel: StudentRecord['gradeLevel']): number {
+  return gradeLevel === 'K' ? 0 : Number(gradeLevel);
+}
 
 export type StudentOption = {
   id: string;
