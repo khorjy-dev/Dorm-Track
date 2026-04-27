@@ -175,8 +175,18 @@ begin
         where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
       ));
   end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incident_locations' and policyname='incident_locations_admin_only') then
-    create policy incident_locations_admin_only on public.incident_locations
+  drop policy if exists incident_locations_admin_only on public.incident_locations;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incident_locations' and policyname='incident_locations_select_staff') then
+    create policy incident_locations_select_staff on public.incident_locations
+      for select to authenticated
+      using (exists (
+        select 1 from public.staff_email_allowlist a
+        where a.email = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      ));
+  end if;
+  drop policy if exists incident_locations_admin_all on public.incident_locations;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='incident_locations' and policyname='incident_locations_admin_all') then
+    create policy incident_locations_admin_all on public.incident_locations
       for all to authenticated
       using (public.current_user_role() = 'admin')
       with check (public.current_user_role() = 'admin');
